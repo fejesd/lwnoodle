@@ -1,6 +1,6 @@
 {
   "name": "lwnoodle",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight client and server implementation for Lightware 3 protocol",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -9,17 +9,22 @@
     "build": "tsc",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "tslint -p tsconfig.json",
-    "prepare" : "npm run build",
-    "prepublishOnly" : "npm test && npm run lint",
-    "preversion" : "npm run lint",
-    "version" : "npm run format && git add -A src",
-    "postversion" : "git push && git push --tags"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run lint",
+    "preversion": "npm run lint",
+    "version": "npm run format && git add -A src",
+    "postversion": "git push && git push --tags"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fejesd/lwnoodle.git"
   },
-  "keywords": ["LW3","Lightware","protocol","Lightware 3 protocol"],
+  "keywords": [
+    "LW3",
+    "Lightware",
+    "protocol",
+    "Lightware 3 protocol"
+  ],
   "author": "David Fejes",
   "license": "ISC",
   "bugs": {
