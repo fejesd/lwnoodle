@@ -23,9 +23,9 @@ export class TcpClientConnection extends EventEmitter {
   private shutdown: boolean; /* shutdown in progress */
   private drained: boolean;
   private socket: Socket;
-  private connection_retry_timeout: number;
+  private connectionRetryTimeout: number;
   private inputbuffer: string;
-  private outputbuffer: Array<string>;
+  private outputbuffer: string[];
   private frameLimiter: string;
 
   constructor(host: string, port: number) {
@@ -39,22 +39,24 @@ export class TcpClientConnection extends EventEmitter {
     this.inputbuffer = '';
     this.outputbuffer = [];
     this.frameLimiter = '\n';
-    this.connection_retry_timeout = 1000; // retry after 1 secs
+    this.connectionRetryTimeout = 1000; // retry after 1 secs
     this.socket = new Socket();
     this.socket.setEncoding('utf8');
-    this.socket.setKeepAlive(true, 6000); //keepalive to 10 seconds
+    this.socket.setKeepAlive(true, 6000); // keepalive to 10 seconds
     this.socket.setNoDelay(true);
     this.socket.on('error', this.socketError.bind(this));
     this.socket.on('connect', this.socketConnected.bind(this));
     this.socket.on('close', this.socketClosed.bind(this));
     this.socket.on('drain', this.socketDrained.bind(this));
     this.socket.on('data', this.socketData.bind(this));
-    this.on('error', (e)=>{});  //prevent throwing "unhandled error event"
+    this.on('error', (e) => {
+      /* empty */
+    }); // prevent throwing "unhandled error event"
     debug('TcpClientConnection created');
     this.startConnect();
   }
 
-  private socketError(e: Error) {      
+  private socketError(e: Error) {
     debug('TCP connection error:' + e.toString());
     if (this.connected) this.emit('error', e);
   }
@@ -64,7 +66,7 @@ export class TcpClientConnection extends EventEmitter {
     this.connected = false;
     this.outputbuffer = [];
     this.inputbuffer = '';
-    if (!this.shutdown) setTimeout(this.startConnect.bind(this), this.connection_retry_timeout);
+    if (!this.shutdown) setTimeout(this.startConnect.bind(this), this.connectionRetryTimeout);
     this.emit('close');
   }
 
@@ -81,7 +83,7 @@ export class TcpClientConnection extends EventEmitter {
     this.drained = true;
     debug('Output buffer empty');
     while (this.outputbuffer.length) {
-      var msg: string = this.outputbuffer.shift() as string;
+      const msg: string = this.outputbuffer.shift() as string;
       debug(`> ${msg}`);
       if (!this.socket.write(msg)) {
         this.drained = false;
@@ -93,8 +95,8 @@ export class TcpClientConnection extends EventEmitter {
 
   private socketData(data: string): void {
     this.inputbuffer += data.toString();
-    var messages = this.inputbuffer.split(this.frameLimiter);
-    for (var i = 0; i < messages.length - 1; i++) {
+    const messages = this.inputbuffer.split(this.frameLimiter);
+    for (let i = 0; i < messages.length - 1; i++) {
       debug(`< ${messages[i]}`);
       this.emit('frame', messages[i]);
     }
@@ -139,7 +141,7 @@ export class TcpClientConnection extends EventEmitter {
    * @param timeout msec
    */
   setRetryTimeout(timeout: number) {
-    this.connection_retry_timeout = timeout;
+    this.connectionRetryTimeout = timeout;
   }
 
   /**

@@ -7,7 +7,7 @@ interface ServerSocket {
   socket: Socket;
   drained: boolean;
   inputbuffer: string;
-  outputbuffer: Array<string>;
+  outputbuffer: string[];
 }
 
 export class TcpServerConnection extends EventEmitter {
@@ -21,7 +21,7 @@ export class TcpServerConnection extends EventEmitter {
     this.server = new Server();
     this.server.on('error', this.serverError.bind(this));
     this.server.on('connection', this.serverConnection.bind(this));
-    this.server.listen({ port: port, host: 'localhost', exclusive: true });
+    this.server.listen({ port, host: 'localhost', exclusive: true });
     this.sockets = {};
     this.socketcount = 0;
     this.frameLimiter = '\n';
@@ -33,7 +33,7 @@ export class TcpServerConnection extends EventEmitter {
 
   private serverConnection(s: Socket) {
     this.socketcount++;
-    var socketId = this.socketcount;
+    const socketId = this.socketcount;
     debug(`New socket was received, id: ${socketId}`);
     this.sockets[socketId] = {
       socket: s,
@@ -54,7 +54,7 @@ export class TcpServerConnection extends EventEmitter {
       this.sockets[socketId].drained = true;
       debug(`Socket ${socketId} output buffer empty`);
       while (this.sockets[socketId].outputbuffer.length) {
-        var msg: string = this.sockets[socketId].outputbuffer.shift() as string;
+        const msg: string = this.sockets[socketId].outputbuffer.shift() as string;
         debug(`#{$socketId}> ${msg}`);
         if (!this.sockets[socketId].socket.write(msg)) {
           this.sockets[socketId].drained = false;
@@ -65,8 +65,8 @@ export class TcpServerConnection extends EventEmitter {
     });
     s.on('data', (data: string) => {
       this.sockets[socketId].inputbuffer += data.toString();
-      var messages = this.sockets[socketId].inputbuffer.split(this.frameLimiter);
-      for (var i = 0; i < messages.length - 1; i++) {
+      const messages = this.sockets[socketId].inputbuffer.split(this.frameLimiter);
+      for (let i = 0; i < messages.length - 1; i++) {
         debug(`< ${messages[i]}`);
         this.emit('frame', socketId, messages[i]);
       }
@@ -92,8 +92,8 @@ export class TcpServerConnection extends EventEmitter {
    */
   write(socketId: number, msg: string): void {
     if (!(socketId in this.sockets)) {
-        debug(`Error during write, unknown socketId: ${socketId}`);
-        return; //fire an exception?
+      debug(`Error during write, unknown socketId: ${socketId}`);
+      return; // fire an exception?
     }
     if (this.sockets[socketId].drained) {
       if (!this.sockets[socketId].socket.write(msg)) this.sockets[socketId].drained = false;
@@ -111,6 +111,6 @@ export class TcpServerConnection extends EventEmitter {
   }
 
   getConnectionCount() {
-      return Object.keys(this.sockets).length;
+    return Object.keys(this.sockets).length;
   }
 }

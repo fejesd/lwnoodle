@@ -4,14 +4,14 @@ import Debug from 'debug';
 
 Debug.enable('TcpClientConnection,TcpServerConnection');
 
-function sleep(ms:number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 test('Single connection', async () => {
-  var server = new TcpServerConnection(6107);
+  const server = new TcpServerConnection(6107);
   await sleep(100);
-  var client = new TcpClientConnection('127.0.0.1', 6107);
+  const client = new TcpClientConnection('127.0.0.1', 6107);
   await sleep(100);
   expect(client.isConnected()).toBe(true);
   client.close();
@@ -21,31 +21,33 @@ test('Single connection', async () => {
 });
 
 test('Multiple connection', async () => {
-  var server = new TcpServerConnection(6107);
+  const server = new TcpServerConnection(6107);
   await sleep(100);
-  var client1 = new TcpClientConnection('127.0.0.1', 6107);
-  var client2 = new TcpClientConnection('127.0.0.1', 6107);
-  var client3 = new TcpClientConnection('127.0.0.1', 6107);
+  const client1 = new TcpClientConnection('127.0.0.1', 6107);
+  const client2 = new TcpClientConnection('127.0.0.1', 6107);
+  const client3 = new TcpClientConnection('127.0.0.1', 6107);
   await sleep(100);
   expect(server.getConnectionCount()).toBe(3);
   client1.close();
   await sleep(100);
   expect(server.getConnectionCount()).toBe(2);
-  client3.close();  
+  client3.close();
   await sleep(100);
   expect(server.getConnectionCount()).toBe(1);
-  client2.close();  
+  client2.close();
   await sleep(100);
   expect(server.getConnectionCount()).toBe(0);
-  server.close();  
+  server.close();
 });
 
 test('Sending message in both ways', async () => {
-  var msg:Array<Array<any>> = [];
-  var server = new TcpServerConnection(6107);
-  server.on('frame', (id,data)=>{ msg.push([id, data]); })  
+  let msg: any[][] = [];
+  const server = new TcpServerConnection(6107);
+  server.on('frame', (id, data) => {
+    msg.push([id, data]);
+  });
   await sleep(100);
-  var client1 = new TcpClientConnection('127.0.0.1', 6107);
+  const client1 = new TcpClientConnection('127.0.0.1', 6107);
   await sleep(100);
   client1.write('Hello world!\nTest');
   client1.write(' this\nuncompleted');
@@ -54,9 +56,11 @@ test('Sending message in both ways', async () => {
   expect(msg[0][1]).toBe('Hello world!');
   expect(msg[1][1]).toBe('Test this');
   msg = [];
-  client1.on('frame', (data)=>{ msg.push([0, data]); })  
-  server.write(1,'Hello!\nTada');
-  server.write(1,'\nhey');
+  client1.on('frame', (data) => {
+    msg.push([0, data]);
+  });
+  server.write(1, 'Hello!\nTada');
+  server.write(1, '\nhey');
   await sleep(100);
   expect(msg.length).toBe(2);
   expect(msg[0][1]).toBe('Hello!');
