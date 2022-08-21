@@ -1,5 +1,5 @@
 import { Socket } from 'net';
-import { EventEmitter } from 'node:events';
+import { ClientConnection } from './clientconnection';
 import Debug from 'debug';
 const debug = Debug('TcpClientConnection');
 
@@ -15,7 +15,7 @@ const debug = Debug('TcpClientConnection');
  * @event   close
  * @event   frame   Fires when a new complete frame has been arrived. Parameter is the frame.
  */
-export class TcpClientConnection extends EventEmitter {
+export class TcpClientConnection extends ClientConnection {
   host: string;
   port: number;
   connected: boolean; /* is connected? */
