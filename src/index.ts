@@ -23,7 +23,7 @@ interface NoodleClientObject {
   lw3client: Lw3Client;
 }
 
-export const NoodleClient = (options: NoodleClientParameters = {}) => {
+export const NoodleClient = (options: NoodleClientParameters = {}): any => {
   options.host = options.host || '127.0.0.1';
   options.port = options.port || 6107;
   options.waitresponses = options.waitresponses || false;
@@ -34,12 +34,16 @@ export const NoodleClient = (options: NoodleClientParameters = {}) => {
     lw3client: new Lw3Client(new TcpClientConnection(options.host, options.port), options.waitresponses),
   };
   return new Proxy(clientObj, {
-    async apply(target: NoodleClientObject, ctx, args) {
+    async apply(target: NoodleClientObject, ctx: string, args) {
       /* todo */
     },
 
     get(target: NoodleClientObject, key: string): any {
       if (key in target) return target[key as keyof typeof target]; // make target fields accessible. Is this needed?
+      if (key === '__close__')
+        return () => {
+          target.lw3client.close();
+        };
     },
 
     set(target: NoodleClientObject, key: string, value: string): boolean {

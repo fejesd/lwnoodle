@@ -56,4 +56,8 @@ export class Lw3Client {
     this.waitlist.push({ signature, callback, callbackInfo });
     this.signatureCounter = (this.signatureCounter + 1) % 0x10000;
   }
+
+  close() {
+    this.connection.close();
+  }
 }
