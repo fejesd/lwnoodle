@@ -21,14 +21,28 @@ export class TcpServerConnection extends EventEmitter {
     this.server = new Server();
     this.server.on('error', this.serverError.bind(this));
     this.server.on('connection', this.serverConnection.bind(this));
+    this.server.on('close', this.serverClose.bind(this));
+    this.server.on('listening', this.serverListen.bind(this));
     this.server.listen({ port, host: 'localhost', exclusive: true });
     this.sockets = {};
     this.socketcount = 0;
     this.frameLimiter = '\n';
   }
 
+  private serverClose() {
+    debug('Server closed');
+    this.emit('close');
+  }
+
+  private serverListen() {
+    debug('Server is listening');
+    this.emit('listening');
+  }
+
+
   private serverError(e: Error) {
     debug('Server error: ' + e.toString());
+    this.emit('error',e);
   }
 
   private serverConnection(s: Socket) {
@@ -107,6 +121,7 @@ export class TcpServerConnection extends EventEmitter {
   }
 
   close() {
+    debug('Closing server...')
     this.server.close();
   }
 

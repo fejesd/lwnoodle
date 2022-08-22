@@ -164,7 +164,10 @@ export class TcpClientConnection extends ClientConnection {
    */
   close() {
     this.shutdown = true;
-    if (this.connected) this.socket.end();
+    if (this.connected) {
+      debug('Closing connection...')
+      this.socket.end();
+    }
   }
 
   /**
