@@ -26,7 +26,7 @@ async function waitForAnEvent(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      obj.removeAllListeners(eventName);      
+      obj.removeAllListeners(eventName);
       debug(`Timeout... no ${eventName} event was received`);
       reject();
     }, timeout);
@@ -42,9 +42,9 @@ async function waitForAnEvent(
 
 beforeEach(() => {
   debug('');
-  debug('======='+expect.getState().currentTestName+'=======');
+  debug('=======' + expect.getState().currentTestName + '=======');
   debug('');
-})
+});
 
 afterEach(async () => {
   await sleep(100); // jest fails exiting sometimes without this, as the fd for server socket needs some time to release. Todo: find a better workaround.
