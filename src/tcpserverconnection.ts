@@ -39,10 +39,9 @@ export class TcpServerConnection extends EventEmitter {
     this.emit('listening');
   }
 
-
   private serverError(e: Error) {
     debug('Server error: ' + e.toString());
-    this.emit('error',e);
+    this.emit('error', e);
   }
 
   private serverConnection(s: Socket) {
@@ -121,7 +120,7 @@ export class TcpServerConnection extends EventEmitter {
   }
 
   close() {
-    debug('Closing server...')
+    debug('Closing server...');
     this.server.close();
   }
 
