@@ -13,6 +13,7 @@ function sleep(ms: number) {
  * Will wait for an eventName event on obj object. It will reject if timeout has been reached.
  * @param obj 
  * @param eventName 
+ * @param count
  * @param timeout 
  * @returns 
  */
@@ -25,7 +26,7 @@ async function waitForAnEvent(obj:EventEmitter, eventName:string, count:number=1
       reject();      
     }, timeout);
     obj.on(eventName, ()=>{
-      if (--count==0) {         
+      if (--count===0) {         
         clearTimeout(timer);
         obj.removeAllListeners(eventName);
         resolve();
@@ -92,7 +93,7 @@ test('Sending message in both ways', async () => {
     await waitForAnEvent(client1, 'connect');
     client1.write('Hello world!\nTest');
     client1.write(' this\nuncompleted');
-    await sleep(500);    
+    await waitForAnEvent(server,'frame',2);
     expect(msg.length).toBe(2);
     expect(msg[0][1]).toBe('Hello world!');
     expect(msg[1][1]).toBe('Test this');
@@ -102,7 +103,7 @@ test('Sending message in both ways', async () => {
     });
     server.write(1, 'Hello!\nTada');
     server.write(1, '\nhey');    
-    await sleep(500);
+    await waitForAnEvent(client1,'frame',2);
     expect(msg.length).toBe(2);
     expect(msg[0][1]).toBe('Hello!');
     expect(msg[1][1]).toBe('Tada');
