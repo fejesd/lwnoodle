@@ -15,7 +15,7 @@
     "version": "npm run format && git add -A src",
     "postversion": "git push && git push --tags"
   },
-  "pre-commit":["format", "lint"],
+  "pre-commit":["format", "lint", "test"],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fejesd/lwnoodle.git"

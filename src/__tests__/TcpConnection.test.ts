@@ -66,7 +66,7 @@ test('Multiple connection', async () => {
   const server = new TcpServerConnection(6107);
   await waitForAnEvent(server, 'listening');
   const client1 = new TcpClientConnection('127.0.0.1', 6107);
-  await waitForAnEvent(client1, 'connect');  
+  await waitForAnEvent(client1, 'connect');
   const client2 = new TcpClientConnection('127.0.0.1', 6107);
   await waitForAnEvent(client2, 'connect');
   const client3 = new TcpClientConnection('127.0.0.1', 6107);
