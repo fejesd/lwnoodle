@@ -2,8 +2,9 @@ import { TcpClientConnection } from '../tcpclientconnection';
 import { TcpServerConnection } from '../tcpserverconnection';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
+const debug = Debug('Test');
 
-Debug.enable('TcpClientConnection,TcpServerConnection');
+Debug.enable('TcpClientConnection,TcpServerConnection,Test');
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -25,9 +26,8 @@ async function waitForAnEvent(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      obj.removeAllListeners(eventName);
-      // tslint:disable-next-line:no-console
-      console.log(`Timeout... no ${eventName} event was received`);
+      obj.removeAllListeners(eventName);      
+      debug(`Timeout... no ${eventName} event was received`);
       reject();
     }, timeout);
     obj.on(eventName, () => {
@@ -39,6 +39,12 @@ async function waitForAnEvent(
     });
   });
 }
+
+beforeEach(() => {
+  debug('');
+  debug('======='+expect.getState().currentTestName+'=======');
+  debug('');
+})
 
 afterEach(async () => {
   await sleep(100); // jest fails exiting sometimes without this, as the fd for server socket needs some time to release. Todo: find a better workaround.
