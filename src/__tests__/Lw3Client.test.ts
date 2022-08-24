@@ -107,33 +107,33 @@ test('CALL', async () => {
   await waitForAnEvent(server, 'close', debug);
 });
 
-test('SET', async ()=>{
-    const testbenches = [
-        ['/TEST/NODE.property', 'value', 'pw /TEST/NODE.property=value', true],   //todo: add error branches
-    ];
-    const server = new TcpServerConnection(6107);
-    await waitForAnEvent(server, 'listening', debug);
-    const client = new Lw3Client(new TcpClientConnection());
-    await waitForAnEvent(client, 'connect', debug);
+test('SET', async () => {
+  const testbenches = [
+    ['/TEST/NODE.property', 'value', 'pw /TEST/NODE.property=value', true], //todo: add error branches
+  ];
+  const server = new TcpServerConnection(6107);
+  await waitForAnEvent(server, 'listening', debug);
+  const client = new Lw3Client(new TcpClientConnection());
+  await waitForAnEvent(client, 'connect', debug);
 
-    let testbenchId: number;
-    server.on('frame', (id, data) => {
-      var parts = data.split('#');
-      expect(parts[1]).toBe(
-        'SET ' + testbenches[testbenchId][0] + '=' + Lw3Client.escape(testbenches[testbenchId][1] as string),
-      );
-      server.write(1, '{' + parts[0] + '\n' + testbenches[testbenchId][2] + '\n}\n');
-    });
-    for (testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
-      try {
-        await client.SET(testbenches[testbenchId][0] as string, testbenches[testbenchId][1] as string);
-        expect(testbenches[testbenchId][3]).toStrictEqual(true);
-      } catch (err) {
-        expect(testbenches[testbenchId][3]).toBe(false);
-      }
+  let testbenchId: number;
+  server.on('frame', (id, data) => {
+    var parts = data.split('#');
+    expect(parts[1]).toBe(
+      'SET ' + testbenches[testbenchId][0] + '=' + Lw3Client.escape(testbenches[testbenchId][1] as string),
+    );
+    server.write(1, '{' + parts[0] + '\n' + testbenches[testbenchId][2] + '\n}\n');
+  });
+  for (testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
+    try {
+      await client.SET(testbenches[testbenchId][0] as string, testbenches[testbenchId][1] as string);
+      expect(testbenches[testbenchId][3]).toStrictEqual(true);
+    } catch (err) {
+      expect(testbenches[testbenchId][3]).toBe(false);
     }
-    
-    client.close();
-    server.close();
-    await waitForAnEvent(server, 'close', debug);
+  }
+
+  client.close();
+  server.close();
+  await waitForAnEvent(server, 'close', debug);
 });
