@@ -46,7 +46,19 @@ export class Lw3Client extends EventEmitter {
    * @param value string to escape
    */
   static escape(value: string): string {
-    value = value.replace(/\t/g, '\\t').replace(/\n/g, '\\n');
+    //  \ { } # % ( ) \r \n \t
+    // todo : more efficient way
+    value = value
+      .replace(/\\/g, '\\\\')
+      .replace(/\t/g, '\\t')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/{/g, '\\{')
+      .replace(/}/g, '\\}')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)')
+      .replace(/#/g, '\\#')
+      .replace(/%/g, '\\%');
     return value;
   }
 
@@ -55,7 +67,17 @@ export class Lw3Client extends EventEmitter {
    * @param value string to escape
    */
   static unescape(value: string): string {
-    value = value.replace(/\\t/g, '\t').replace(/\\n/g, '\n');
+    value = value
+      .replace(/\\\\/g, '\\')
+      .replace(/\\t/g, '\t')
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\{/g, '{')
+      .replace(/\\}/g, '}')
+      .replace(/\\\(/g, '(')
+      .replace(/\\\)/g, ')')
+      .replace(/\\#/g, '#')
+      .replace(/\\%/g, '%');
     return value;
   }
 

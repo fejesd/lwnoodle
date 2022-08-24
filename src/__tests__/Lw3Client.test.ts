@@ -18,9 +18,11 @@ afterEach(async () => {
 });
 
 test('Escaping', () => {
+  //  \ { } # % ( ) \r \n \t
   const testbenches = [
     ['árvíztűrő tükörfúrógép', 'árvíztűrő tükörfúrógép'],
     ['test\nelek\ntest\ttest\ttest', 'test\\nelek\\ntest\\ttest\\ttest'],
+    ['hello{}\\()', 'hello\\{\\}\\\\\\(\\)'],
   ];
   for (const test of testbenches) {
     expect(Lw3Client.escape(test[0])).toBe(test[1]);
