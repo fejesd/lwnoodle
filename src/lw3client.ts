@@ -78,7 +78,7 @@ export class Lw3Client extends EventEmitter {
 
   socketError(e: Error) {
     debug('Connection error:' + e.toString());
-    this.emit('error',e);
+    this.emit('error', e);
   }
 
   private socketClosed() {

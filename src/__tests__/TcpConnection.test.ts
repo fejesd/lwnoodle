@@ -67,7 +67,7 @@ test('Sending message in both ways', async () => {
   await waitForAnEvent(client1, 'connect', debug);
   client1.write('Hello world!\nTest');
   client1.write(' this\nuncompleted');
-  await waitForAnEvent(server, 'frame', 2);
+  await waitForAnEvent(server, 'frame', debug, 2);
   expect(msg.length).toBe(2);
   expect(msg[0][1]).toBe('Hello world!');
   expect(msg[1][1]).toBe('Test this');
@@ -77,7 +77,7 @@ test('Sending message in both ways', async () => {
   });
   server.write(1, 'Hello!\nTada');
   server.write(1, '\nhey');
-  await waitForAnEvent(client1, 'frame', 2);
+  await waitForAnEvent(client1, 'frame', debug, 2);
   expect(msg.length).toBe(2);
   expect(msg[0][1]).toBe('Hello!');
   expect(msg[1][1]).toBe('Tada');
