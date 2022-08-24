@@ -53,7 +53,7 @@ afterEach(async () => {
 test('Single connection', async () => {
   const server = new TcpServerConnection(6107);
   await waitForAnEvent(server, 'listening');
-  const client = new TcpClientConnection('127.0.0.1', 6107);
+  const client = new TcpClientConnection('localhost', 6107);
   await waitForAnEvent(client, 'connect');
   expect(client.isConnected()).toBe(true);
   client.close();
@@ -65,11 +65,11 @@ test('Single connection', async () => {
 test('Multiple connection', async () => {
   const server = new TcpServerConnection(6107);
   await waitForAnEvent(server, 'listening');
-  const client1 = new TcpClientConnection('127.0.0.1', 6107);
+  const client1 = new TcpClientConnection('localhost', 6107);
   await waitForAnEvent(client1, 'connect');
-  const client2 = new TcpClientConnection('127.0.0.1', 6107);
+  const client2 = new TcpClientConnection('localhost', 6107);
   await waitForAnEvent(client2, 'connect');
-  const client3 = new TcpClientConnection('127.0.0.1', 6107);
+  const client3 = new TcpClientConnection('localhost', 6107);
   await waitForAnEvent(client3, 'connect');
   while (server.getConnectionCount() < 3) await waitForAnEvent(server, 'connect');
   expect(server.getConnectionCount()).toBe(3);
@@ -97,7 +97,7 @@ test('Sending message in both ways', async () => {
   server.on('frame', (id, data) => {
     msg.push([id, data]);
   });
-  const client1 = new TcpClientConnection('127.0.0.1', 6107);
+  const client1 = new TcpClientConnection('localhost', 6107);
   await waitForAnEvent(client1, 'connect');
   client1.write('Hello world!\nTest');
   client1.write(' this\nuncompleted');

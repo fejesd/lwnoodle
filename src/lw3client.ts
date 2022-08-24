@@ -40,6 +40,24 @@ export class Lw3Client {
     return retvalue;
   }
 
+  /**
+   * Escape string according to lw3 protocol
+   * @param value string to escape
+   */
+  static escape(value: string): string {
+    value = value.replace(/\t/g, '\\t').replace(/\n/g, '\\n');
+    return value;
+  }
+
+  /**
+   * Unescape string according to lw3 protocol
+   * @param value string to escape
+   */
+  static unescape(value: string): string {
+    value = value.replace(/\\t/g, '\t').replace(/\\n/g, '\n');
+    return value;
+  }
+
   constructor(connection: ClientConnection, waitresponses: boolean) {
     this.connection = connection;
     this.waitResponses = waitresponses;
@@ -126,7 +144,7 @@ export class Lw3Client {
     const proppath = data.substring(0, eq);
     const nodepath = proppath.substring(0, proppath.indexOf('.'));
     const propname = proppath.substring(proppath.indexOf('.') + 1, proppath.length);
-    const value = data.substring(eq + 1, data.length); // todo: escape
+    const value = Lw3Client.unescape(data.substring(eq + 1, data.length));
     // notify subscribers
     this.subscribers.forEach((i) => {
       if (i.path === nodepath) {
@@ -165,7 +183,7 @@ export class Lw3Client {
    * @returns promise will fullfill on success, reject on failure
    */
   SET(property: string, value: string): Promise<void> {
-    // todo escaping
+    value = Lw3Client.escape(value);
     // todo sanity check
     return new Promise<void>((resolve, reject) => {
       this.cmdSend('SET ' + property + '=' + value.toString(), (data: string[], info: any) => {
@@ -181,12 +199,11 @@ export class Lw3Client {
    * @returns promise will fullfill on success (and return the method return value), reject on failure
    */
   CALL(property: string, param: string): Promise<string> {
-    // todo escaping
+    param = Lw3Client.escape(param);
     // todo sanity check
     return new Promise<string>((resolve, reject) => {
       this.cmdSend('CALL ' + property + '(' + param + ')', (data: string[], info: any) => {
-        if (data[0].charAt(1) === 'O')
-          resolve(data[0].substring(data[0].search('=') + 1, data[0].length)); // todo: escaping
+        if (data[0].charAt(1) === 'O') resolve(data[0].substring(data[0].search('=') + 1, data[0].length));
         else reject();
       });
     });
@@ -219,7 +236,7 @@ export class Lw3Client {
         }
         const n = data.indexOf('=');
         if (n === -1) reject();
-        resolve(Lw3Client.convertValue(line.substring(n + 1, line.length - 1)));
+        resolve(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length - 1))));
       });
     });
   }
