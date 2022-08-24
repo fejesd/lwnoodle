@@ -40,7 +40,7 @@ test('GET', async () => {
     ['/TEST/NODE.property', 'pw /TEST/NODE.property', undefined],
     ['/TEST/NODE.property', 'aw /TEST/NODE.property=5', undefined],
     ['/TEST/NODE.property', '', undefined],
-    ['/TEST/NODE.property', 'qwert\nwertz', undefined]
+    ['/TEST/NODE.property', 'qwert\nwertz', undefined],
   ];
   const server = new TcpServerConnection(6107);
   await waitForAnEvent(server, 'listening', debug);
@@ -54,13 +54,49 @@ test('GET', async () => {
   });
   for (testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
     try {
-        var test = await client.GET(testbenches[testbenchId][0] as string);
-        expect(test).toStrictEqual(testbenches[testbenchId][2]);
+      var test = await client.GET(testbenches[testbenchId][0] as string);
+      expect(test).toStrictEqual(testbenches[testbenchId][2]);
     } catch (err) {
-        expect(testbenches[testbenchId][2]).toBe(undefined);
+      expect(testbenches[testbenchId][2]).toBe(undefined);
     }
   }
   client.close();
   server.close();
   await waitForAnEvent(server, 'close', debug);
 });
+
+
+
+test('CALL', async () => {
+    const testbenches = [
+      ['/TEST/NODE:method', '',  'mO /TEST/NODE:method=All right', 'All right'],
+      ['/TEST/NODE:method', 'Sample;Parameter',  'mO /TEST/NODE:method=All right', 'All right'],
+      ['/TEST/NODE:method', 'Sample\nParameter',  'mO /TEST/NODE:method=All right', 'All right'],
+      ['/TEST/NODE:method', 'Sample;Parameter',  'mE /TEST/NODE:method=%E007 Access denied', undefined, '%E007 Access denied'],
+      ['/TEST/NODE:method', 'Sample;Parameter',  'pR /TEST/NODE.method=ok', undefined, undefined],
+      ['/TEST/NODE:method', 'Sample;Parameter',  '', undefined, undefined],
+      ['/TEST/NODE:method', 'Sample;Parameter',  'syntaxerr\n\nssad', undefined, undefined],
+    ];
+    const server = new TcpServerConnection(6107);
+    await waitForAnEvent(server, 'listening', debug);
+    const client = new Lw3Client(new TcpClientConnection());
+    await waitForAnEvent(client, 'connect', debug);
+    let testbenchId: number;
+    server.on('frame', (id, data) => {
+      var parts = data.split('#');
+      expect(parts[1]).toBe('CALL ' + testbenches[testbenchId][0]+'('+Lw3Client.escape(testbenches[testbenchId][1] as string)+')');
+      server.write(1, '{' + parts[0] + '\n' + testbenches[testbenchId][2] + '\n}\n');
+    });
+    for (testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
+      try {
+        var test = await client.CALL(testbenches[testbenchId][0] as string, testbenches[testbenchId][1] as string);
+        expect(test).toStrictEqual(testbenches[testbenchId][3]);
+      } catch (err) {
+        expect(testbenches[testbenchId][3]).toBe(undefined);
+        if (testbenches[testbenchId][4]) expect((err as Error).toString()).toBe('Error: '+testbenches[testbenchId][4]);
+      }
+    }
+    client.close();
+    server.close();
+    await waitForAnEvent(server, 'close', debug);
+  });

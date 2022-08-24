@@ -207,9 +207,30 @@ export class Lw3Client extends EventEmitter {
     param = Lw3Client.escape(param);
     // todo sanity check
     return new Promise<string>((resolve, reject) => {
+      function error(msg: string): void {
+        debug(msg);
+        reject(new Error(msg));
+      }
       this.cmdSend('CALL ' + property + '(' + param + ')', (data: string[], info: any) => {
-        if (data[0].charAt(1) === 'O') resolve(data[0].substring(data[0].search('=') + 1, data[0].length));
-        else reject();
+        if (data.length > 1) {
+          error('GET response contains multiple lines: ' + JSON.stringify(data));
+          return;
+        } else if (data.length === 0) {
+          error('GET response contains no data!');
+          return;
+        }
+        if (!data.length) {
+          error('Empty response');
+          return;
+        }
+        const line = data[0];
+        if (!line.length) {
+          error('Empty response');
+          return;
+        }
+        if (line.substring(0,3) == 'mO ') resolve(line.substring(line.search('=') + 1, line.length));
+        else if (line.substring(0,3) == 'mE ') error((line.substring(data[0].search('=') + 1, line.length)));
+        else error('Malformed response: '+data);
       });
     });
   }
@@ -222,20 +243,37 @@ export class Lw3Client extends EventEmitter {
   GET(property: string): Promise<string> {
     const pathParts = property.split('.');
     return new Promise((resolve, reject) => {
-      function error(msg:string):void {
+      function error(msg: string): void {
         debug(msg);
-        reject();
+        reject(new Error(msg));
       }
-      if (pathParts.length !== 2) error(`Getting invalid property: ${property}`); 
+      if (pathParts.length !== 2) error(`Getting invalid property: ${property}`);
       this.cmdSend('GET ' + property, (data: string[], info: any) => {
-        if (data.length > 1) { error('GET response contains multiple lines: ' + JSON.stringify(data)); return; }
-        else if (data.length === 0) { error('GET response contains no data!'); return; }
-        if (!data.length) { error('Empty response'); return; }
+        if (data.length > 1) {
+          error('GET response contains multiple lines: ' + JSON.stringify(data));
+          return;
+        } else if (data.length === 0) {
+          error('GET response contains no data!');
+          return;
+        }
+        if (!data.length) {
+          error('Empty response');
+          return;
+        }
         const line = data[0];
-        if (!line.length) { error('Empty response'); return; }
-        if (line.charAt(0) !== 'p') { error('GET response contains no property... ' + line); return; }
+        if (!line.length) {
+          error('Empty response');
+          return;
+        }
+        if (line.charAt(0) !== 'p') {
+          error('GET response contains no property... ' + line);
+          return;
+        }
         const n = line.indexOf('=');
-        if (n === -1) { error('Malformed GET response: ' + line); return; }
+        if (n === -1) {
+          error('Malformed GET response: ' + line);
+          return;
+        }
         resolve(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length))));
       });
     });
