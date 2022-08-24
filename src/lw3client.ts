@@ -228,9 +228,9 @@ export class Lw3Client extends EventEmitter {
           error('Empty response');
           return;
         }
-        if (line.substring(0,3) == 'mO ') resolve(line.substring(line.search('=') + 1, line.length));
-        else if (line.substring(0,3) == 'mE ') error((line.substring(data[0].search('=') + 1, line.length)));
-        else error('Malformed response: '+data);
+        if (line.substring(0, 3) === 'mO ') resolve(line.substring(line.search('=') + 1, line.length));
+        else if (line.substring(0, 3) === 'mE ') error(line.substring(data[0].search('=') + 1, line.length));
+        else error('Malformed response: ' + data);
       });
     });
   }

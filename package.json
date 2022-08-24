@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "test": "jest --config jestconfig.json --forceExit --coverage",
+    "test": "jest --config jestconfig.json --forceExit --coverage && jest-coverage-badges",
     "build": "tsc",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "tslint -p tsconfig.json",
@@ -15,7 +15,11 @@
     "version": "npm run format && git add -A src",
     "postversion": "git push && git push --tags"
   },
-  "pre-commit":["format", "lint", "test"],
+  "pre-commit": [
+    "format",
+    "lint",
+    "test"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fejesd/lwnoodle.git"
@@ -36,6 +40,7 @@
     "@types/debug": "^4.1.7",
     "@types/jest": "^28.1.7",
     "jest": "^28.1.3",
+    "jest-coverage-badges": "^1.1.2",
     "pre-commit": "^1.2.2",
     "prettier": "^2.7.1",
     "ts-jest": "^28.0.8",

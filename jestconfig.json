@@ -4,5 +4,8 @@
     },
     "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
     "testPathIgnorePatterns": ["helpers"],
-    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"]
+    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
+    "coverageReporters": [
+      "json-summary"
+    ]
   }
