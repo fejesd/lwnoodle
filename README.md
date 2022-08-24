@@ -1,10 +1,9 @@
-![Automated tests](https://github.com/fejesd/lwnoodle/actions/workflows/node.js.yml/badge.svg) ![TSLint](https://github.com/fejesd/lwnoodle/actions/workflows/lint.js.yml/badge.svg)
-(https://github.com/fejesd/lwnoodle/actions/workflows/lint.js.yml/badge.svg)
-
-(coverage/badge-lines.svg)
-(coverage/badge-functions.svg)
-(coverage/badge-statements.svg)
-(coverage/badge-branches.svg)
+![Automated tests](https://github.com/fejesd/lwnoodle/actions/workflows/node.js.yml/badge.svg) 
+![TSLint](https://github.com/fejesd/lwnoodle/actions/workflows/lint.js.yml/badge.svg)
+![code coverage lines](coverage/badge-lines.svg)
+![code coverage functions](coverage/badge-functions.svg)
+![code coverage statements](coverage/badge-statements.svg)
+![code coverage branches](coverage/badge-branches.svg)
 
 
 Don't use, heavy work in progress.
