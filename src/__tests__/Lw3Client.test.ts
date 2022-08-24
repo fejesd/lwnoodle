@@ -37,6 +37,10 @@ test('GET', async () => {
     ['/TEST/NODE.property', 'pw /TEST/NODE.property=5', 5],
     ['/TEST/NODE.property', 'pw /TEST/NODE.property=5.42', 5.42],
     ['/TEST/NODE.property', 'pw /TEST/NODE.property=true;false;1;2;3;O1', [true, false, 1, 2, 3, 'O1']],
+    ['/TEST/NODE.property', 'pw /TEST/NODE.property', undefined],
+    ['/TEST/NODE.property', 'aw /TEST/NODE.property=5', undefined],
+    ['/TEST/NODE.property', '', undefined],
+    ['/TEST/NODE.property', 'qwert\nwertz', undefined]
   ];
   const server = new TcpServerConnection(6107);
   await waitForAnEvent(server, 'listening', debug);
@@ -49,8 +53,12 @@ test('GET', async () => {
     server.write(1, '{' + parts[0] + '\n' + testbenches[testbenchId][1] + '\n}\n');
   });
   for (testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
-    var test = await client.GET(testbenches[testbenchId][0] as string);
-    expect(test).toStrictEqual(testbenches[testbenchId][2]);
+    try {
+        var test = await client.GET(testbenches[testbenchId][0] as string);
+        expect(test).toStrictEqual(testbenches[testbenchId][2]);
+    } catch (err) {
+        expect(testbenches[testbenchId][2]).toBe(undefined);
+    }
   }
   client.close();
   server.close();

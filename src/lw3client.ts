@@ -222,29 +222,20 @@ export class Lw3Client extends EventEmitter {
   GET(property: string): Promise<string> {
     const pathParts = property.split('.');
     return new Promise((resolve, reject) => {
-      if (pathParts.length !== 2) {
-        debug(`Getting invalid property: ${property}`); // TODO: better errorhandling
+      function error(msg:string):void {
+        debug(msg);
         reject();
       }
+      if (pathParts.length !== 2) error(`Getting invalid property: ${property}`); 
       this.cmdSend('GET ' + property, (data: string[], info: any) => {
-        if (data.length > 1) {
-          debug('GET response contains multiple lines: ' + JSON.stringify(data));
-          reject();
-        } else if (data.length === 0) {
-          debug('GET response contains no data!');
-          reject();
-        }
+        if (data.length > 1) { error('GET response contains multiple lines: ' + JSON.stringify(data)); return; }
+        else if (data.length === 0) { error('GET response contains no data!'); return; }
+        if (!data.length) { error('Empty response'); return; }
         const line = data[0];
-        if (line.charAt(0) !== 'p') {
-          debug('GET response contains no property... ' + line);
-          reject();
-        }
+        if (!line.length) { error('Empty response'); return; }
+        if (line.charAt(0) !== 'p') { error('GET response contains no property... ' + line); return; }
         const n = line.indexOf('=');
-        if (n === -1) {
-          debug('Malformed GET response: ' + line);
-          reject();
-        }
-        debug(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length))));
+        if (n === -1) { error('Malformed GET response: ' + line); return; }
         resolve(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length))));
       });
     });
