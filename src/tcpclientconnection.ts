@@ -28,7 +28,7 @@ export class TcpClientConnection extends ClientConnection {
   private outputbuffer: string[];
   private frameLimiter: string;
 
-  constructor(host: string, port: number) {
+  constructor(host: string = 'localhost', port: number = 6107) {
     super();
     this.host = host;
     this.port = port;

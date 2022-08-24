@@ -1,4 +1,5 @@
 import { ClientConnection } from './clientconnection';
+import { EventEmitter } from 'node:events';
 import Debug from 'debug';
 const debug = Debug('Lw3Client');
 
@@ -15,7 +16,7 @@ interface SubscriberEntry {
   callback: (path: string, property: string, value: string) => void;
 }
 
-export class Lw3Client {
+export class Lw3Client extends EventEmitter {
   connection: ClientConnection;
   waitResponses: boolean;
   subscribers: SubscriberEntry[];
@@ -29,14 +30,14 @@ export class Lw3Client {
   /* Helper function, convert common values to appropriate JavaScript types. (integer / boolean / list) */
   static convertValue(value: string) {
     let retvalue: any;
-    if (Number.isSafeInteger(value)) retvalue = parseInt(value, 10);
+    if (!isNaN(parseFloat(value))) retvalue = parseFloat(value);
     else if (value.toUpperCase() === 'FALSE') retvalue = false;
     else if (value.toUpperCase() === 'TRUE') retvalue = true;
     else if (value.indexOf(';') !== -1) {
       retvalue = value.split(';');
       if (retvalue.slice(-1)[0] === '') retvalue.pop();
       for (let i = 0; i < retvalue.length; i++) retvalue[i] = Lw3Client.convertValue(retvalue[i]);
-    }
+    } else return value;
     return retvalue;
   }
 
@@ -58,7 +59,8 @@ export class Lw3Client {
     return value;
   }
 
-  constructor(connection: ClientConnection, waitresponses: boolean) {
+  constructor(connection: ClientConnection, waitresponses: boolean = false) {
+    super();
     this.connection = connection;
     this.waitResponses = waitresponses;
     this.subscribers = [];
@@ -76,14 +78,17 @@ export class Lw3Client {
 
   socketError(e: Error) {
     debug('Connection error:' + e.toString());
+    this.emit('error',e);
   }
 
   private socketClosed() {
     debug('Connection was closed');
+    this.emit('close');
   }
 
   private socketConnected() {
     debug('Connection established succesfully');
+    this.emit('connect');
     this.signatureCounter = 0;
     this.waitList = [];
     this.isInBlock = false;
@@ -234,9 +239,13 @@ export class Lw3Client {
           debug('GET response contains no property... ' + line);
           reject();
         }
-        const n = data.indexOf('=');
-        if (n === -1) reject();
-        resolve(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length - 1))));
+        const n = line.indexOf('=');
+        if (n === -1) {
+          debug('Malformed GET response: ' + line);
+          reject();
+        }
+        debug(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length))));
+        resolve(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length))));
       });
     });
   }
