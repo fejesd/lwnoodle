@@ -4,7 +4,31 @@ import { TcpServerConnection } from '../tcpserverconnection';
 import Debug from 'debug';
 const debug = Debug('Test');
 
-Debug.enable('Node,Test,Lw3Client,TcpServerConnection');
+Debug.enable('Noodle,Test,Lw3Client,TcpServerConnection');
+
+let expectedMessage: string;
+let mockedResponse: string;
+var server:TcpServerConnection;
+var noodle:any;
+
+beforeAll(async () => {
+  server = new TcpServerConnection(6107);
+  await waitForAnEvent(server, 'listening', debug);
+  noodle = Noodle();
+  await waitForAnEvent(noodle.lw3client, 'connect', debug);
+  server.on('frame', (id, data) => {
+    const parts = data.split('#');
+    expect(parts[1]).toBe(expectedMessage);
+    server.write(1, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
+  });
+});
+
+afterAll(async ()=>{
+  noodle.__close__();
+  server.close();
+  await waitForAnEvent(server, 'close', debug);
+  await sleep(100); // jest fails exiting sometimes without this, as the fd for server socket needs some time to release. Todo: find a better workaround.
+});
 
 beforeEach(() => {
   debug('');
@@ -12,75 +36,87 @@ beforeEach(() => {
   debug('');
 });
 
-afterEach(async () => {
-  await sleep(100); // jest fails exiting sometimes without this, as the fd for server socket needs some time to release. Todo: find a better workaround.
-});
-
-test('Defaults', () => {
+test('if defaults for noodle set appropriately', () => {
   const noodle = Noodle();
   expect(noodle.lw3client.waitresponses).toBeFalsy();
   expect(noodle.name).toBe('default');
   noodle.__close__();
 });
 
-test('Noodle GET', async () => {
-  const server = new TcpServerConnection(6107);
-  await waitForAnEvent(server, 'listening', debug);
-  const noodle = Noodle();
-  await waitForAnEvent(noodle.lw3client, 'connect', debug);
-  let expectedMessage: string;
-  let mockedResponse: string;
-  let result;
-
-  server.on('frame', (id, data) => {
-    const parts = data.split('#');
-    expect(parts[1]).toBe(expectedMessage);
-    server.write(1, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
-  });
-
-  //
-  // Test basic property access
-  //
-
+test('Noodle GET basic property access', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
-  mockedResponse = 'pw /NODE/TEST.property=test\\tvalue';
+  mockedResponse = 'pw /NODE/TEST.Property=test\\tvalue';
 
-  result = await noodle.NODE.TEST.Property;
+  let result = await noodle.NODE.TEST.Property;
 
   expect(result).toBe('test\tvalue');
+});
 
-  //
-  // Test root node property access
-  //
-
+test('root node property access', async () => {
   expectedMessage = 'GET /.Property';
   mockedResponse = 'pw /.property=test\\tvalue';
 
-  result = await noodle.Property;
+  let result = await noodle.Property;
 
   expect(result).toBe('test\tvalue');
+});
 
-  //
-  // Test type casting
-  //
-
+test('property type casting', async() => {
   expectedMessage = 'GET /NODE/TEST.TESTPROPERTY';
   mockedResponse = 'pw /NODE/TEST.TESTPROPERTY=test\\tvalue';
 
-  result = await noodle.NODE.TEST.TESTPROPERTY__prop__;
+  let result = await noodle.NODE.TEST.TESTPROPERTY__prop__;
 
   expect(result).toBe('test\tvalue');
+});
 
-  //
-  // Test error throwing
-  //
-
+it('should throw an error on GET upon failure', async()=>{
   expectedMessage = 'GET /NODE/TEST.Property';
   mockedResponse = 'pE %E001 Node not found';
 
   await expect(noodle.NODE.TEST.Property).rejects.toThrow(Error);
+});
 
-  noodle.__close__();
-  server.close();
-  await waitForAnEvent(server, 'close', debug);
+test('property return value as a number if result is an integer', async() => {
+  expectedMessage = 'GET /NODE/TEST.Property';
+  mockedResponse = 'pw /NODE/TEST.Property=52';
+
+  let result = await noodle.NODE.TEST.Property;
+  expect(result).toBe(52);
+  expect(typeof result).toBe("number");
+});
+
+test('property return value as a number if result is an float', async() => {
+  expectedMessage = 'GET /NODE/TEST.Property';
+  mockedResponse = 'pw /NODE/TEST.Property=52.34';
+
+  let result = await noodle.NODE.TEST.Property;
+  expect(result).toBe(52.34);
+  expect(typeof result).toBe("number");
+});
+
+test('property return value as a boolean if result is "true"', async() => {
+  expectedMessage = 'GET /NODE/TEST.Property';
+  mockedResponse = 'pw /NODE/TEST.Property=true';
+
+  let result = await noodle.NODE.TEST.Property;
+  expect(result).toBe(true);
+  expect(typeof result).toBe("boolean");
+});
+
+test('property return value as a boolean if result is "false"', async() => {
+  expectedMessage = 'GET /NODE/TEST.Property';
+  mockedResponse = 'pw /NODE/TEST.Property=false';
+
+  let result = await noodle.NODE.TEST.Property;
+  expect(result).toBe(false);
+  expect(typeof result).toBe("boolean");
+});
+
+test('property return value as an array if result is a list', async() => {
+  expectedMessage = 'GET /NODE/TEST.Property';
+  mockedResponse = 'pw /NODE/TEST.Property=12;hello;false';
+
+  let result = await noodle.NODE.TEST.Property;
+  expect(result).toStrictEqual([12,'hello',false]);
 });

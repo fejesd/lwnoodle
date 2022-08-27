@@ -13,7 +13,7 @@ interface SubscriberEntry {
   path: string;
   property: string;
   value: string;
-  callback: (path: string, property: string, value: string) => void;
+  callback: (path: string, property: string, value: any) => void;
 }
 
 export class Lw3Client extends EventEmitter {
@@ -30,14 +30,14 @@ export class Lw3Client extends EventEmitter {
   /* Helper function, convert common values to appropriate JavaScript types. (integer / boolean / list) */
   static convertValue(value: string) {
     let retvalue: any;
-    if (!isNaN(parseFloat(value))) retvalue = parseFloat(value);
-    else if (value.toUpperCase() === 'FALSE') retvalue = false;
-    else if (value.toUpperCase() === 'TRUE') retvalue = true;
-    else if (value.indexOf(';') !== -1) {
+    if (value.indexOf(';') !== -1) {
       retvalue = value.split(';');
       if (retvalue.slice(-1)[0] === '') retvalue.pop();
       for (let i = 0; i < retvalue.length; i++) retvalue[i] = Lw3Client.convertValue(retvalue[i]);
-    } else return value;
+    }  else if (!isNaN(parseFloat(value))) retvalue = parseFloat(value);
+    else if (value.toUpperCase() === 'FALSE') retvalue = false;
+    else if (value.toUpperCase() === 'TRUE') retvalue = true;
+    else retvalue = value;
     return retvalue;
   }
 
@@ -262,7 +262,7 @@ export class Lw3Client extends EventEmitter {
    * @param property Full path + dot + propertyname
    * @returns
    */
-  GET(property: string): Promise<string> {
+  GET(property: string): Promise<any> {
     const pathParts = property.split('.');
     return new Promise((resolve, reject) => {
       function error(msg: string): void {

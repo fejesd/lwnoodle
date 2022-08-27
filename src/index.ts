@@ -1,5 +1,7 @@
 import { Lw3Client } from './lw3client';
 import { TcpClientConnection } from './tcpclientconnection';
+import Debug from 'debug';
+const debug = Debug('Noodle');
 
 interface NoodleClientParameters {
   /** Ip address or host. Default is 127.0.0.1 */
@@ -69,7 +71,8 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
     } else {
       key = key.replace('__prop__', '');
       const path = '/' + target.path.join('/');
-      return target.lw3client.GET(path + '.' + key);
+      const value = target.lw3client.GET(path + '.' + key);
+      return value;
     }
   },
 
@@ -89,5 +92,6 @@ export const Noodle = (options: NoodleClientParameters = {}): any => {
     [],
     new Lw3Client(new TcpClientConnection(options.host, options.port), options.waitresponses),
   );
+  debug('Noodle created');
   return new Proxy(clientObj, NoodleProxyHandler);
 };
