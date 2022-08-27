@@ -12,9 +12,6 @@ beforeEach(() => {
   debug('');
 });
 
-afterEach(async () => {
-  await sleep(200); // jest fails exiting sometimes without this, as the fd for server socket needs some time to release. Todo: find a better workaround.
-});
 
 test('Single connection', async () => {
   const server = new TcpServerConnection(6107);
@@ -25,7 +22,7 @@ test('Single connection', async () => {
   client.close();
   await waitForAnEvent(client, 'close', debug);
   server.close();
-  await waitForAnEvent(server, 'close', debug);
+  await waitForAnEvent(server, 'serverclose', debug);
 });
 
 test('Multiple connection', async () => {
@@ -52,7 +49,7 @@ test('Multiple connection', async () => {
   expect(server.getConnectionCount()).toBe(0);
 
   server.close();
-  await waitForAnEvent(server, 'close', debug);
+  await waitForAnEvent(server, 'serverclose', debug);
 });
 
 test('Sending message in both ways', async () => {
@@ -83,5 +80,5 @@ test('Sending message in both ways', async () => {
   expect(msg[1][1]).toBe('Tada');
   client1.close();
   server.close();
-  await waitForAnEvent(server, 'close', debug);
+  await waitForAnEvent(server, 'serverclose', debug);
 });

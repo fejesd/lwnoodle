@@ -31,7 +31,7 @@ export class TcpServerConnection extends EventEmitter {
 
   private serverClose() {
     debug('Server closed');
-    this.emit('close');
+    this.emit('serverclose');
   }
 
   private serverListen() {

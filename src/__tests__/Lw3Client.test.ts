@@ -7,17 +7,38 @@ const debug = Debug('Test');
 
 Debug.enable('TcpServerConnection,Test,Lw3Client');
 
+var server: TcpServerConnection;
+var client: Lw3Client;
+var expectedMessage: string;
+var mockedResponse: string;
+
+beforeAll(async () => {
+  server = new TcpServerConnection(6107);
+  await waitForAnEvent(server, 'listening', debug);
+  client = new Lw3Client(new TcpClientConnection());
+  await waitForAnEvent(client, 'connect', debug);
+  server.on('frame', (id, data) => {
+    const parts = data.split('#');
+    expect(parts[1]).toBe(expectedMessage);
+    if (mockedResponse.length) server.write(1, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
+  });
+});
+
+afterAll(async () => {
+  client.close();
+  server.close();
+  debug('wait server to close');
+  await waitForAnEvent(server, 'serverclose', debug);
+  debug('server closed');
+});
+
 beforeEach(() => {
   debug('');
   debug('=======' + expect.getState().currentTestName + '=======');
   debug('');
 });
 
-afterEach(async () => {
-  await sleep(100); // jest fails exiting sometimes without this, as the fd for server socket needs some time to release. Todo: find a better workaround.
-});
-
-test('Escaping', () => {
+test('escaping and unescaping', () => {
   //  \ { } # % ( ) \r \n \t
   const testbenches = [
     ['árvíztűrő tükörfúrógép', 'árvíztűrő tükörfúrógép'],
@@ -44,28 +65,20 @@ test('GET', async () => {
     ['/TEST/NODE.property', '', undefined],
     ['/TEST/NODE.property', 'qwert\nwertz', undefined],
   ];
-  const server = new TcpServerConnection(6107);
-  await waitForAnEvent(server, 'listening', debug);
-  const client = new Lw3Client(new TcpClientConnection());
-  await waitForAnEvent(client, 'connect', debug);
-  let testbenchId: number;
-  server.on('frame', (id, data) => {
-    const parts = data.split('#');
-    expect(parts[1]).toBe('GET ' + testbenches[testbenchId][0]);
-    server.write(1, '{' + parts[0] + '\n' + testbenches[testbenchId][1] + '\n}\n');
-  });
-  for (testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
+
+  for (let testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
     try {
+      expectedMessage = 'GET ' + testbenches[testbenchId][0];
+      mockedResponse = testbenches[testbenchId][1] as string;
       const test = await client.GET(testbenches[testbenchId][0] as string);
       expect(test).toStrictEqual(testbenches[testbenchId][2]);
     } catch (err) {
       expect(testbenches[testbenchId][2]).toBe(undefined);
     }
   }
-  client.close();
-  server.close();
-  await waitForAnEvent(server, 'close', debug);
+
 });
+
 
 test('CALL', async () => {
   const testbenches = [
@@ -83,20 +96,11 @@ test('CALL', async () => {
     ['/TEST/NODE:method', 'Sample;Parameter', '', undefined, undefined],
     ['/TEST/NODE:method', 'Sample;Parameter', 'syntaxerr\n\nssad', undefined, undefined],
   ];
-  const server = new TcpServerConnection(6107);
-  await waitForAnEvent(server, 'listening', debug);
-  const client = new Lw3Client(new TcpClientConnection());
-  await waitForAnEvent(client, 'connect', debug);
-  let testbenchId: number;
-  server.on('frame', (id, data) => {
-    const parts = data.split('#');
-    expect(parts[1]).toBe(
-      'CALL ' + testbenches[testbenchId][0] + '(' + Lw3Client.escape(testbenches[testbenchId][1] as string) + ')',
-    );
-    server.write(1, '{' + parts[0] + '\n' + testbenches[testbenchId][2] + '\n}\n');
-  });
-  for (testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
+
+  for (let testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
     try {
+      expectedMessage = 'CALL ' + testbenches[testbenchId][0] + '(' + Lw3Client.escape(testbenches[testbenchId][1] as string) + ')';
+      mockedResponse = testbenches[testbenchId][2] as string;
       const test = await client.CALL(testbenches[testbenchId][0] as string, testbenches[testbenchId][1] as string);
       expect(test).toStrictEqual(testbenches[testbenchId][3]);
     } catch (err) {
@@ -104,38 +108,21 @@ test('CALL', async () => {
       if (testbenches[testbenchId][4]) expect((err as Error).toString()).toBe('Error: ' + testbenches[testbenchId][4]);
     }
   }
-  client.close();
-  server.close();
-  await waitForAnEvent(server, 'close', debug);
 });
 
 test('SET', async () => {
   const testbenches = [
     ['/TEST/NODE.property', 'value', 'pw /TEST/NODE.property=value', true], // todo: add error branches
   ];
-  const server = new TcpServerConnection(6107);
-  await waitForAnEvent(server, 'listening', debug);
-  const client = new Lw3Client(new TcpClientConnection());
-  await waitForAnEvent(client, 'connect', debug);
-
-  let testbenchId: number;
-  server.on('frame', (id, data) => {
-    const parts = data.split('#');
-    expect(parts[1]).toBe(
-      'SET ' + testbenches[testbenchId][0] + '=' + Lw3Client.escape(testbenches[testbenchId][1] as string),
-    );
-    server.write(1, '{' + parts[0] + '\n' + testbenches[testbenchId][2] + '\n}\n');
-  });
-  for (testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
+ 
+  for (let testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
     try {
+      expectedMessage = 'SET ' + testbenches[testbenchId][0] + '=' + Lw3Client.escape(testbenches[testbenchId][1] as string);
+      mockedResponse = testbenches[testbenchId][2] as string;
       await client.SET(testbenches[testbenchId][0] as string, testbenches[testbenchId][1] as string);
       expect(testbenches[testbenchId][3]).toStrictEqual(true);
     } catch (err) {
       expect(testbenches[testbenchId][3]).toBe(false);
     }
   }
-
-  client.close();
-  server.close();
-  await waitForAnEvent(server, 'close', debug);
 });

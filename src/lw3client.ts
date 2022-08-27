@@ -7,6 +7,7 @@ interface WaitListItem {
   signature: string;
   callback: ((cb: string[], info: any) => void) | undefined;
   callbackInfo: any;
+  timeoutcb?: ()=>void;
 }
 
 interface SubscriberEntry {
@@ -34,7 +35,7 @@ export class Lw3Client extends EventEmitter {
       retvalue = value.split(';');
       if (retvalue.slice(-1)[0] === '') retvalue.pop();
       for (let i = 0; i < retvalue.length; i++) retvalue[i] = Lw3Client.convertValue(retvalue[i]);
-    }  else if (!isNaN(parseFloat(value))) retvalue = parseFloat(value);
+    } else if (!isNaN(parseFloat(value))) retvalue = parseFloat(value);
     else if (value.toUpperCase() === 'FALSE') retvalue = false;
     else if (value.toUpperCase() === 'TRUE') retvalue = true;
     else retvalue = value;
@@ -125,14 +126,20 @@ export class Lw3Client extends EventEmitter {
     });
   }
 
-  private cmdSend(cmd: string, callback?: (data: string[], info: any) => void, callbackInfo?: any): void {
+  private cmdSend(cmd: string, callback?: (data: string[], info: any) => void, callbackInfo?: any, timeoutcb?:()=>void): void {
     if (!this.connection.isConnected()) return;
     const signature = (this.signatureCounter + 0x10000).toString(16).substr(-4).toUpperCase();
     const data = signature + '#' + cmd + '\n';
     this.connection.write(data);
     callbackInfo = callbackInfo || undefined;
-    this.waitList.push({ signature, callback, callbackInfo });
+    this.waitList.push({ signature, callback, callbackInfo, timeoutcb });
     this.signatureCounter = (this.signatureCounter + 1) % 0x10000;
+    setTimeout(((signo:string)=>{return ()=>{
+      for (let item of this.waitList) 
+        if (item.signature == signo) 
+          if (item.timeoutcb) 
+            item.timeoutcb(); 
+    }})(signature as string), 1000);
   }
 
   /**
@@ -213,8 +220,15 @@ export class Lw3Client extends EventEmitter {
     value = Lw3Client.escape(value);
     // todo sanity check
     return new Promise<void>((resolve, reject) => {
+      function error(msg: string): void {
+        debug(msg);
+        reject(new Error(msg));
+      }
       this.cmdSend('SET ' + property + '=' + value.toString(), (data: string[], info: any) => {
-        data[0].charAt(1) !== 'E' ? resolve() : reject();
+        data[0].charAt(1) !== 'E' ? resolve() : error('Error received: '+data);
+      },undefined, ()=>{
+        error('no answer, timeout');
+        return;
       });
     });
   }
@@ -253,6 +267,9 @@ export class Lw3Client extends EventEmitter {
         if (line.substring(0, 3) === 'mO ') resolve(line.substring(line.search('=') + 1, line.length));
         else if (line.substring(0, 3) === 'mE ') error(line.substring(data[0].search('=') + 1, line.length));
         else error('Malformed response: ' + data);
+      },undefined, ()=>{
+        error('no answer, timeout');
+        return;
       });
     });
   }
@@ -297,6 +314,9 @@ export class Lw3Client extends EventEmitter {
           return;
         }
         resolve(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length))));
+      },undefined, ()=>{
+        error('no answer, timeout');
+        return;
       });
     });
   }
