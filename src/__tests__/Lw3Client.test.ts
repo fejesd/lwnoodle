@@ -48,13 +48,13 @@ test('GET', async () => {
   await waitForAnEvent(client, 'connect', debug);
   let testbenchId: number;
   server.on('frame', (id, data) => {
-    var parts = data.split('#');
+    const parts = data.split('#');
     expect(parts[1]).toBe('GET ' + testbenches[testbenchId][0]);
     server.write(1, '{' + parts[0] + '\n' + testbenches[testbenchId][1] + '\n}\n');
   });
   for (testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
     try {
-      var test = await client.GET(testbenches[testbenchId][0] as string);
+      const test = await client.GET(testbenches[testbenchId][0] as string);
       expect(test).toStrictEqual(testbenches[testbenchId][2]);
     } catch (err) {
       expect(testbenches[testbenchId][2]).toBe(undefined);
@@ -87,7 +87,7 @@ test('CALL', async () => {
   await waitForAnEvent(client, 'connect', debug);
   let testbenchId: number;
   server.on('frame', (id, data) => {
-    var parts = data.split('#');
+    const parts = data.split('#');
     expect(parts[1]).toBe(
       'CALL ' + testbenches[testbenchId][0] + '(' + Lw3Client.escape(testbenches[testbenchId][1] as string) + ')',
     );
@@ -95,7 +95,7 @@ test('CALL', async () => {
   });
   for (testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
     try {
-      var test = await client.CALL(testbenches[testbenchId][0] as string, testbenches[testbenchId][1] as string);
+      const test = await client.CALL(testbenches[testbenchId][0] as string, testbenches[testbenchId][1] as string);
       expect(test).toStrictEqual(testbenches[testbenchId][3]);
     } catch (err) {
       expect(testbenches[testbenchId][3]).toBe(undefined);
@@ -109,7 +109,7 @@ test('CALL', async () => {
 
 test('SET', async () => {
   const testbenches = [
-    ['/TEST/NODE.property', 'value', 'pw /TEST/NODE.property=value', true], //todo: add error branches
+    ['/TEST/NODE.property', 'value', 'pw /TEST/NODE.property=value', true], // todo: add error branches
   ];
   const server = new TcpServerConnection(6107);
   await waitForAnEvent(server, 'listening', debug);
@@ -118,7 +118,7 @@ test('SET', async () => {
 
   let testbenchId: number;
   server.on('frame', (id, data) => {
-    var parts = data.split('#');
+    const parts = data.split('#');
     expect(parts[1]).toBe(
       'SET ' + testbenches[testbenchId][0] + '=' + Lw3Client.escape(testbenches[testbenchId][1] as string),
     );
