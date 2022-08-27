@@ -13,7 +13,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await sleep(100); // jest fails exiting sometimes without this, as the fd for server socket needs some time to release. Todo: find a better workaround.
+  await sleep(200); // jest fails exiting sometimes without this, as the fd for server socket needs some time to release. Todo: find a better workaround.
 });
 
 test('Single connection', async () => {
