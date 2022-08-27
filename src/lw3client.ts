@@ -135,8 +135,8 @@ export class Lw3Client extends EventEmitter {
     this.waitList.push({ signature, callback, callbackInfo, timeoutcb });
     this.signatureCounter = (this.signatureCounter + 1) % 0x10000;
     setTimeout(((signo:string)=>{return ()=>{
-      for (let item of this.waitList) 
-        if (item.signature == signo) 
+      for (const item of this.waitList) 
+        if (item.signature === signo) 
           if (item.timeoutcb) 
             item.timeoutcb(); 
     }})(signature as string), 1000);

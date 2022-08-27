@@ -8,8 +8,8 @@ Debug.enable('Noodle,Test,Lw3Client,TcpServerConnection');
 
 let expectedMessage: string;
 let mockedResponse: string;
-var server: TcpServerConnection;
-var noodle: any;
+let server: TcpServerConnection;
+let noodle: any;
 
 beforeAll(async () => {
   server = new TcpServerConnection(6107);
@@ -19,7 +19,7 @@ beforeAll(async () => {
   server.on('frame', (id, data) => {
     const parts = data.split('#');
     expect(parts[1]).toBe(expectedMessage);
-    if (mockedResponse != '') server.write(1, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
+    if (mockedResponse !== '') server.write(1, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
   });
 });
 
@@ -42,7 +42,7 @@ test('Noodle GET basic property access', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
   mockedResponse = 'pw /NODE/TEST.Property=test\\tvalue';
 
-  let result = await noodle.NODE.TEST.Property;
+  const result = await noodle.NODE.TEST.Property;
 
   expect(result).toBe('test\tvalue');
 });
@@ -51,7 +51,7 @@ test('root node property access', async () => {
   expectedMessage = 'GET /.Property';
   mockedResponse = 'pw /.property=test\\tvalue';
 
-  let result = await noodle.Property;
+  const result = await noodle.Property;
 
   expect(result).toBe('test\tvalue');
 });
@@ -60,7 +60,7 @@ test('property type casting', async () => {
   expectedMessage = 'GET /NODE/TEST.TESTPROPERTY';
   mockedResponse = 'pw /NODE/TEST.TESTPROPERTY=test\\tvalue';
 
-  let result = await noodle.NODE.TEST.TESTPROPERTY__prop__;
+  const result = await noodle.NODE.TEST.TESTPROPERTY__prop__;
 
   expect(result).toBe('test\tvalue');
 });
@@ -83,7 +83,7 @@ test('property return value as a number if result is an integer', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
   mockedResponse = 'pw /NODE/TEST.Property=52';
 
-  let result = await noodle.NODE.TEST.Property;
+  const result = await noodle.NODE.TEST.Property;
   expect(result).toBe(52);
   expect(typeof result).toBe('number');
 });
@@ -92,7 +92,7 @@ test('property return value as a number if result is an float', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
   mockedResponse = 'pw /NODE/TEST.Property=52.34';
 
-  let result = await noodle.NODE.TEST.Property;
+  const result = await noodle.NODE.TEST.Property;
   expect(result).toBe(52.34);
   expect(typeof result).toBe('number');
 });
@@ -101,7 +101,7 @@ test('property return value as a boolean if result is "true"', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
   mockedResponse = 'pw /NODE/TEST.Property=true';
 
-  let result = await noodle.NODE.TEST.Property;
+  const result = await noodle.NODE.TEST.Property;
   expect(result).toBe(true);
   expect(typeof result).toBe('boolean');
 });
@@ -110,7 +110,7 @@ test('property return value as a boolean if result is "false"', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
   mockedResponse = 'pw /NODE/TEST.Property=false';
 
-  let result = await noodle.NODE.TEST.Property;
+  const result = await noodle.NODE.TEST.Property;
   expect(result).toBe(false);
   expect(typeof result).toBe('boolean');
 });
@@ -119,6 +119,6 @@ test('property return value as an array if result is a list', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
   mockedResponse = 'pw /NODE/TEST.Property=12;hello;false';
 
-  let result = await noodle.NODE.TEST.Property;
+  const result = await noodle.NODE.TEST.Property;
   expect(result).toStrictEqual([12, 'hello', false]);
 });

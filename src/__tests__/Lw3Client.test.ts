@@ -7,10 +7,10 @@ const debug = Debug('Test');
 
 Debug.enable('TcpServerConnection,Test,Lw3Client');
 
-var server: TcpServerConnection;
-var client: Lw3Client;
-var expectedMessage: string;
-var mockedResponse: string;
+let server: TcpServerConnection;
+let client: Lw3Client;
+let expectedMessage: string;
+let mockedResponse: string;
 
 beforeAll(async () => {
   server = new TcpServerConnection(6107);
@@ -66,14 +66,14 @@ test('GET', async () => {
     ['/TEST/NODE.property', 'qwert\nwertz', undefined],
   ];
 
-  for (let testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
+  for (const testbench of testbenches) {
     try {
-      expectedMessage = 'GET ' + testbenches[testbenchId][0];
-      mockedResponse = testbenches[testbenchId][1] as string;
-      const test = await client.GET(testbenches[testbenchId][0] as string);
-      expect(test).toStrictEqual(testbenches[testbenchId][2]);
+      expectedMessage = 'GET ' + testbench[0];
+      mockedResponse = testbench[1] as string;
+      const test = await client.GET(testbench[0] as string);
+      expect(test).toStrictEqual(testbench[2]);
     } catch (err) {
-      expect(testbenches[testbenchId][2]).toBe(undefined);
+      expect(testbench[2]).toBe(undefined);
     }
   }
 
@@ -97,15 +97,15 @@ test('CALL', async () => {
     ['/TEST/NODE:method', 'Sample;Parameter', 'syntaxerr\n\nssad', undefined, undefined],
   ];
 
-  for (let testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
+  for (const testbench of testbenches) {
     try {
-      expectedMessage = 'CALL ' + testbenches[testbenchId][0] + '(' + Lw3Client.escape(testbenches[testbenchId][1] as string) + ')';
-      mockedResponse = testbenches[testbenchId][2] as string;
-      const test = await client.CALL(testbenches[testbenchId][0] as string, testbenches[testbenchId][1] as string);
-      expect(test).toStrictEqual(testbenches[testbenchId][3]);
+      expectedMessage = 'CALL ' + testbench[0] + '(' + Lw3Client.escape(testbench[1] as string) + ')';
+      mockedResponse = testbench[2] as string;
+      const test = await client.CALL(testbench[0] as string, testbench[1] as string);
+      expect(test).toStrictEqual(testbench[3]);
     } catch (err) {
-      expect(testbenches[testbenchId][3]).toBe(undefined);
-      if (testbenches[testbenchId][4]) expect((err as Error).toString()).toBe('Error: ' + testbenches[testbenchId][4]);
+      expect(testbench[3]).toBe(undefined);
+      if (testbench[4]) expect((err as Error).toString()).toBe('Error: ' + testbench[4]);
     }
   }
 });
@@ -115,14 +115,14 @@ test('SET', async () => {
     ['/TEST/NODE.property', 'value', 'pw /TEST/NODE.property=value', true], // todo: add error branches
   ];
  
-  for (let testbenchId = 0; testbenchId < testbenches.length; testbenchId++) {
+  for (const testbench of testbenches) {
     try {
-      expectedMessage = 'SET ' + testbenches[testbenchId][0] + '=' + Lw3Client.escape(testbenches[testbenchId][1] as string);
-      mockedResponse = testbenches[testbenchId][2] as string;
-      await client.SET(testbenches[testbenchId][0] as string, testbenches[testbenchId][1] as string);
-      expect(testbenches[testbenchId][3]).toStrictEqual(true);
+      expectedMessage = 'SET ' + testbench[0] + '=' + Lw3Client.escape(testbench[1] as string);
+      mockedResponse = testbench[2] as string;
+      await client.SET(testbench[0] as string, testbench[1] as string);
+      expect(testbench[3]).toStrictEqual(true);
     } catch (err) {
-      expect(testbenches[testbenchId][3]).toBe(false);
+      expect(testbench[3]).toBe(false);
     }
   }
 });
