@@ -17,6 +17,11 @@ interface SubscriberEntry {
   callback: (path: string, property: string, value: any) => void;
 }
 
+interface SyncPromise {
+  resolve: () => void,
+  reject: (msg:string) => void
+}
+
 export class Lw3Client extends EventEmitter {
   connection: ClientConnection;
   waitResponses: boolean;
@@ -27,7 +32,7 @@ export class Lw3Client extends EventEmitter {
   block: string[]; /* Collect lines of incoming block here */
   signature: string; /* signature of currently received block */
   cmdToSend: string[]; /* Outgoing message FIFO */
-  syncPromises: (()=>void)[];  /* List of promise resolve functions that shall be fulfilled when there are no more tasks */
+  syncPromises: SyncPromise[]; /* List of promise resolve functions that shall be fulfilled when there are no more tasks */
 
   /* Helper function, convert common values to appropriate JavaScript types. (integer / boolean / list) */
   static convertValue(value: string) {
@@ -143,19 +148,21 @@ export class Lw3Client extends EventEmitter {
     this.signatureCounter = (this.signatureCounter + 1) % 0x10000;
     setTimeout(
       ((signo: string) => {
-        return () => {          
-          for (const item of this.waitList) if (item.signature === signo) {
-            debug('timeout for signature: '+signo);
-            if (item.timeoutcb) item.timeoutcb();
-            this.waitList.splice(this.waitList.indexOf(item),1); // remove item, we wait no longer for it            
-              if (this.cmdToSend.length > 0) { // send the next command if outgoing fifo is not empty
+        return () => {
+          for (const item of this.waitList)
+            if (item.signature === signo) {
+              debug('timeout for signature: ' + signo);
+              if (item.timeoutcb) item.timeoutcb();
+              this.waitList.splice(this.waitList.indexOf(item), 1); // remove item, we wait no longer for it
+              if (this.cmdToSend.length > 0) {
+                // send the next command if outgoing fifo is not empty
                 const dataToSend: string = this.cmdToSend.shift() as string;
                 this.connection.write(dataToSend);
                 debug('> ' + dataToSend);
-              }            
-            this.checkSyncPromises();
-            return;
-          }
+              }
+              this.checkSyncPromises();
+              return;
+            }
         };
       })(signature as string),
       1000,
@@ -163,12 +170,21 @@ export class Lw3Client extends EventEmitter {
   }
 
   private checkSyncPromises() {
-    if ((!this.cmdToSend.length) && (!this.waitList.length)) {  // if there are no more pending tasks
+    if (!this.cmdToSend.length && !this.waitList.length) {
+      // if there are no more pending tasks
       if (this.syncPromises.length) {
-        debug('fullfilling sync promises')
-        for (const resolve of this.syncPromises) resolve();         // fullfill all promises
+        debug('fullfilling sync promises');
+        for (const promise of this.syncPromises) promise.resolve(); // fullfill all promises
         this.syncPromises = [];
       }
+    }
+  }
+
+  private rejectSyncPromises(err:string) {
+    if (this.syncPromises.length) {
+      debug('rejecting all sync promises: '+err);
+      for (const promise of this.syncPromises) promise.reject(err); // fullfill all promises
+      this.syncPromises = [];
     }
   }
 
@@ -226,7 +242,7 @@ export class Lw3Client extends EventEmitter {
     for (let i = 0; i < this.waitList.length; i++)
       if (this.waitList[i].signature === signature) {
         const waitRecord: WaitListItem = this.waitList[i];
-        debug('Removed :'+this.waitList.splice(i, 1)[0].signature);
+        debug('Removed :' + this.waitList.splice(i, 1)[0].signature);
         if (this.waitResponses) {
           if (this.cmdToSend.length > 0) {
             const dataToSend: string = this.cmdToSend.shift() as string;
@@ -252,10 +268,11 @@ export class Lw3Client extends EventEmitter {
     value = Lw3Client.escape(value);
     // todo sanity check
     return new Promise<void>((resolve, reject) => {
-      function error(msg: string): void {
+      const error = (msg: string):void => {
         debug(msg);
         reject(new Error(msg));
-      }
+        this.rejectSyncPromises(msg);
+      };
       this.cmdSend(
         'SET ' + property + '=' + value.toString(),
         (data: string[], info: any) => {
@@ -280,9 +297,10 @@ export class Lw3Client extends EventEmitter {
     param = Lw3Client.escape(param);
     // todo sanity check
     return new Promise<string>((resolve, reject) => {
-      function error(msg: string): void {
+      const error = (msg: string):void => {
         debug(msg);
         reject(new Error(msg));
+        this.rejectSyncPromises(msg);
       }
       this.cmdSend(
         'CALL ' + property + '(' + param + ')',
@@ -324,9 +342,10 @@ export class Lw3Client extends EventEmitter {
   GET(property: string): Promise<any> {
     const pathParts = property.split('.');
     return new Promise((resolve, reject) => {
-      function error(msg: string): void {
+      const error = (msg: string): void => {
         debug(msg);
         reject(new Error(msg));
+        this.rejectSyncPromises(msg);
       }
       if (pathParts.length !== 2) error(`Getting invalid property: ${property}`);
       this.cmdSend(
@@ -414,15 +433,15 @@ export class Lw3Client extends EventEmitter {
   /**
    * Returns with a promise that will be fulfilled when there are no more pending tasks. (ie. outgoing fifo is empty, all commands were answered)
    */
-  sync():Promise<void> {
+  sync(): Promise<void> {
     const promise = new Promise<void>((resolve, reject) => {
-      if ((!this.cmdToSend.length) && (!this.waitList.length)) {
+      if (!this.cmdToSend.length && !this.waitList.length) {
         debug('sync has happened immediately');
         resolve();
         return;
       }
-      debug('sync request has been queued');      
-      this.syncPromises.push(resolve);
+      debug('sync request has been queued');
+      this.syncPromises.push({resolve, reject});
     });
     return promise;
   }

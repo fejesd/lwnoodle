@@ -125,12 +125,24 @@ test('property return value as an array if result is a list', async () => {
   expect(result).toStrictEqual([12, 'hello', false]);
 });
 
-
 test('property set to a string', async () => {
   expectedMessage = 'SET /NODE/TEST.Property=hello\\tworld';
   mockedResponse = 'pw /NODE/TEST.Property=hello\\tworld';
 
-  noodle.NODE.TEST.Property='hello\tworld';
-  await noodle.__sync__();    
+  noodle.NODE.TEST.Property = 'hello\tworld';
+  await noodle.__sync__();
+  expect(receivedMessage).toBe(expectedMessage);
+});
+
+test('sync should fail when no response is get for SET', async() => {
+  expectedMessage = 'SET /NODE/TEST.Property=hello\\tworld';
+  mockedResponse = '';  
+  noodle.NODE.TEST.Property = 'hello\tworld';
+  try {
+    await noodle.__sync__(); 
+    fail('no exception');
+  } catch (errormsg) {
+    debug(errormsg);
+  }
   expect(receivedMessage).toBe(expectedMessage);
 });

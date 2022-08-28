@@ -61,8 +61,7 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
       return () => {
         target.lw3client.close();
       };
-    if (key === '__sync__')
-      return target.lw3client.sync.bind(target.lw3client);
+    if (key === '__sync__') return target.lw3client.sync.bind(target.lw3client);
     const castedToProperty = key.indexOf('__prop__') !== -1;
     const isNode = key === key.toUpperCase() || key.indexOf('__node__') !== -1;
     const isMethod = key[0] === key[0].toLowerCase() || key.indexOf('__method__') !== -1;
@@ -78,10 +77,18 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
     }
   },
 
-  set(target: NoodleClientObject, key: string, value: string): boolean {
+  set(target: NoodleClientObject, key: string, value: string): boolean {    
     key = key.replace('__prop__', '');
-    target.lw3client.SET('/' + target.path.join('/') + '.' + key, value);
-    return true; // unfortunately ProxyHandler.set should return immediately with a boolean, there is no way to make it async..
+    // unfortunately ProxyHandler.set should return immediately with a boolean, there is no way to make it async
+    // therefore we will catch the rejections from lw3client.SET here and drop them. __sync__() call should be used after set if error detection is important.    
+    (async ()=>{
+      try {
+        await target.lw3client.SET('/' + target.path.join('/') + '.' + key, value);  
+      } catch (e) {
+        debug('SET command has been rejected');
+      }
+    })();    
+    return true; 
   },
 };
 
