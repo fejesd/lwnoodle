@@ -8,6 +8,7 @@ Debug.enable('Noodle,Test,Lw3Client,TcpServerConnection');
 
 let expectedMessage: string;
 let mockedResponse: string;
+let receivedMessage: string;
 let server: TcpServerConnection;
 let noodle: any;
 
@@ -18,6 +19,7 @@ beforeAll(async () => {
   await waitForAnEvent(noodle.lw3client, 'connect', debug);
   server.on('frame', (id, data) => {
     const parts = data.split('#');
+    receivedMessage = parts[1];
     expect(parts[1]).toBe(expectedMessage);
     if (mockedResponse !== '') server.write(1, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
   });
@@ -30,7 +32,7 @@ afterAll(async () => {
   debug('wait server to close');
   await waitForAnEvent(server, 'serverclose', debug);
   debug('server closed');
- });
+});
 
 beforeEach(() => {
   debug('');
@@ -121,4 +123,14 @@ test('property return value as an array if result is a list', async () => {
 
   const result = await noodle.NODE.TEST.Property;
   expect(result).toStrictEqual([12, 'hello', false]);
+});
+
+
+test('property set to a string', async () => {
+  expectedMessage = 'SET /NODE/TEST.Property=hello\\tworld';
+  mockedResponse = 'pw /NODE/TEST.Property=hello\\tworld';
+
+  noodle.NODE.TEST.Property='hello\tworld';
+  await noodle.__sync__();    
+  expect(receivedMessage).toBe(expectedMessage);
 });

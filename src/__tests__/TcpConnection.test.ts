@@ -12,7 +12,6 @@ beforeEach(() => {
   debug('');
 });
 
-
 test('Single connection', async () => {
   const server = new TcpServerConnection(6107);
   await waitForAnEvent(server, 'listening', debug);

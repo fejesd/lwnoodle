@@ -76,9 +76,7 @@ test('GET', async () => {
       expect(testbench[2]).toBe(undefined);
     }
   }
-
 });
-
 
 test('CALL', async () => {
   const testbenches = [
@@ -114,7 +112,7 @@ test('SET', async () => {
   const testbenches = [
     ['/TEST/NODE.property', 'value', 'pw /TEST/NODE.property=value', true], // todo: add error branches
   ];
- 
+
   for (const testbench of testbenches) {
     try {
       expectedMessage = 'SET ' + testbench[0] + '=' + Lw3Client.escape(testbench[1] as string);

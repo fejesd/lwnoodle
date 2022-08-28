@@ -7,7 +7,7 @@ interface WaitListItem {
   signature: string;
   callback: ((cb: string[], info: any) => void) | undefined;
   callbackInfo: any;
-  timeoutcb?: ()=>void;
+  timeoutcb?: () => void;
 }
 
 interface SubscriberEntry {
@@ -27,6 +27,7 @@ export class Lw3Client extends EventEmitter {
   block: string[]; /* Collect lines of incoming block here */
   signature: string; /* signature of currently received block */
   cmdToSend: string[]; /* Outgoing message FIFO */
+  syncPromises: (()=>void)[];  /* List of promise resolve functions that shall be fulfilled when there are no more tasks */
 
   /* Helper function, convert common values to appropriate JavaScript types. (integer / boolean / list) */
   static convertValue(value: string) {
@@ -93,6 +94,7 @@ export class Lw3Client extends EventEmitter {
     this.block = [];
     this.cmdToSend = [];
     this.signature = '';
+    this.syncPromises = [];
     connection.on('error', this.socketError.bind(this));
     connection.on('close', this.socketClosed.bind(this));
     connection.on('connect', this.socketConnected.bind(this));
@@ -126,7 +128,12 @@ export class Lw3Client extends EventEmitter {
     });
   }
 
-  private cmdSend(cmd: string, callback?: (data: string[], info: any) => void, callbackInfo?: any, timeoutcb?:()=>void): void {
+  private cmdSend(
+    cmd: string,
+    callback?: (data: string[], info: any) => void,
+    callbackInfo?: any,
+    timeoutcb?: () => void,
+  ): void {
     if (!this.connection.isConnected()) return;
     const signature = (this.signatureCounter + 0x10000).toString(16).substr(-4).toUpperCase();
     const data = signature + '#' + cmd + '\n';
@@ -134,12 +141,35 @@ export class Lw3Client extends EventEmitter {
     callbackInfo = callbackInfo || undefined;
     this.waitList.push({ signature, callback, callbackInfo, timeoutcb });
     this.signatureCounter = (this.signatureCounter + 1) % 0x10000;
-    setTimeout(((signo:string)=>{return ()=>{
-      for (const item of this.waitList) 
-        if (item.signature === signo) 
-          if (item.timeoutcb) 
-            item.timeoutcb(); 
-    }})(signature as string), 1000);
+    setTimeout(
+      ((signo: string) => {
+        return () => {          
+          for (const item of this.waitList) if (item.signature === signo) {
+            debug('timeout for signature: '+signo);
+            if (item.timeoutcb) item.timeoutcb();
+            this.waitList.splice(this.waitList.indexOf(item),1); // remove item, we wait no longer for it            
+              if (this.cmdToSend.length > 0) { // send the next command if outgoing fifo is not empty
+                const dataToSend: string = this.cmdToSend.shift() as string;
+                this.connection.write(dataToSend);
+                debug('> ' + dataToSend);
+              }            
+            this.checkSyncPromises();
+            return;
+          }
+        };
+      })(signature as string),
+      1000,
+    );
+  }
+
+  private checkSyncPromises() {
+    if ((!this.cmdToSend.length) && (!this.waitList.length)) {  // if there are no more pending tasks
+      if (this.syncPromises.length) {
+        debug('fullfilling sync promises')
+        for (const resolve of this.syncPromises) resolve();         // fullfill all promises
+        this.syncPromises = [];
+      }
+    }
   }
 
   /**
@@ -196,7 +226,7 @@ export class Lw3Client extends EventEmitter {
     for (let i = 0; i < this.waitList.length; i++)
       if (this.waitList[i].signature === signature) {
         const waitRecord: WaitListItem = this.waitList[i];
-        this.waitList.splice(i, 1);
+        debug('Removed :'+this.waitList.splice(i, 1)[0].signature);
         if (this.waitResponses) {
           if (this.cmdToSend.length > 0) {
             const dataToSend: string = this.cmdToSend.shift() as string;
@@ -205,6 +235,8 @@ export class Lw3Client extends EventEmitter {
           }
         }
         if (waitRecord.callback) waitRecord.callback(data, waitRecord.callbackInfo);
+        this.waitList.splice(i, 1);
+        this.checkSyncPromises();
         return;
       }
     debug(`Unexpected response with signature: ${signature}`); // TODO: better errorhandling
@@ -224,12 +256,17 @@ export class Lw3Client extends EventEmitter {
         debug(msg);
         reject(new Error(msg));
       }
-      this.cmdSend('SET ' + property + '=' + value.toString(), (data: string[], info: any) => {
-        data[0].charAt(1) !== 'E' ? resolve() : error('Error received: '+data);
-      },undefined, ()=>{
-        error('no answer, timeout');
-        return;
-      });
+      this.cmdSend(
+        'SET ' + property + '=' + value.toString(),
+        (data: string[], info: any) => {
+          data[0].charAt(1) !== 'E' ? resolve() : error('Error received: ' + data);
+        },
+        undefined,
+        () => {
+          error('no answer, timeout');
+          return;
+        },
+      );
     });
   }
 
@@ -247,30 +284,35 @@ export class Lw3Client extends EventEmitter {
         debug(msg);
         reject(new Error(msg));
       }
-      this.cmdSend('CALL ' + property + '(' + param + ')', (data: string[], info: any) => {
-        if (data.length > 1) {
-          error('GET response contains multiple lines: ' + JSON.stringify(data));
+      this.cmdSend(
+        'CALL ' + property + '(' + param + ')',
+        (data: string[], info: any) => {
+          if (data.length > 1) {
+            error('GET response contains multiple lines: ' + JSON.stringify(data));
+            return;
+          } else if (data.length === 0) {
+            error('GET response contains no data!');
+            return;
+          }
+          if (!data.length) {
+            error('Empty response');
+            return;
+          }
+          const line = data[0];
+          if (!line.length) {
+            error('Empty response');
+            return;
+          }
+          if (line.substring(0, 3) === 'mO ') resolve(line.substring(line.search('=') + 1, line.length));
+          else if (line.substring(0, 3) === 'mE ') error(line.substring(data[0].search('=') + 1, line.length));
+          else error('Malformed response: ' + data);
+        },
+        undefined,
+        () => {
+          error('no answer, timeout');
           return;
-        } else if (data.length === 0) {
-          error('GET response contains no data!');
-          return;
-        }
-        if (!data.length) {
-          error('Empty response');
-          return;
-        }
-        const line = data[0];
-        if (!line.length) {
-          error('Empty response');
-          return;
-        }
-        if (line.substring(0, 3) === 'mO ') resolve(line.substring(line.search('=') + 1, line.length));
-        else if (line.substring(0, 3) === 'mE ') error(line.substring(data[0].search('=') + 1, line.length));
-        else error('Malformed response: ' + data);
-      },undefined, ()=>{
-        error('no answer, timeout');
-        return;
-      });
+        },
+      );
     });
   }
 
@@ -287,37 +329,42 @@ export class Lw3Client extends EventEmitter {
         reject(new Error(msg));
       }
       if (pathParts.length !== 2) error(`Getting invalid property: ${property}`);
-      this.cmdSend('GET ' + property, (data: string[], info: any) => {
-        if (data.length > 1) {
-          error('GET response contains multiple lines: ' + JSON.stringify(data));
+      this.cmdSend(
+        'GET ' + property,
+        (data: string[], info: any) => {
+          if (data.length > 1) {
+            error('GET response contains multiple lines: ' + JSON.stringify(data));
+            return;
+          } else if (data.length === 0) {
+            error('GET response contains no data!');
+            return;
+          }
+          if (!data.length) {
+            error('Empty response');
+            return;
+          }
+          const line = data[0];
+          if (!line.length) {
+            error('Empty response');
+            return;
+          }
+          if (line.charAt(0) !== 'p') {
+            error('GET response contains no property... ' + line);
+            return;
+          }
+          const n = line.indexOf('=');
+          if (n === -1) {
+            error('Malformed GET response: ' + line);
+            return;
+          }
+          resolve(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length))));
+        },
+        undefined,
+        () => {
+          error('no answer, timeout');
           return;
-        } else if (data.length === 0) {
-          error('GET response contains no data!');
-          return;
-        }
-        if (!data.length) {
-          error('Empty response');
-          return;
-        }
-        const line = data[0];
-        if (!line.length) {
-          error('Empty response');
-          return;
-        }
-        if (line.charAt(0) !== 'p') {
-          error('GET response contains no property... ' + line);
-          return;
-        }
-        const n = line.indexOf('=');
-        if (n === -1) {
-          error('Malformed GET response: ' + line);
-          return;
-        }
-        resolve(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length))));
-      },undefined, ()=>{
-        error('no answer, timeout');
-        return;
-      });
+        },
+      );
     });
   }
 
@@ -362,5 +409,21 @@ export class Lw3Client extends EventEmitter {
    */
   close() {
     this.connection.close();
+  }
+
+  /**
+   * Returns with a promise that will be fulfilled when there are no more pending tasks. (ie. outgoing fifo is empty, all commands were answered)
+   */
+  sync():Promise<void> {
+    const promise = new Promise<void>((resolve, reject) => {
+      if ((!this.cmdToSend.length) && (!this.waitList.length)) {
+        debug('sync has happened immediately');
+        resolve();
+        return;
+      }
+      debug('sync request has been queued');      
+      this.syncPromises.push(resolve);
+    });
+    return promise;
   }
 }

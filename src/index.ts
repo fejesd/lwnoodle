@@ -61,6 +61,8 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
       return () => {
         target.lw3client.close();
       };
+    if (key === '__sync__')
+      return target.lw3client.sync.bind(target.lw3client);
     const castedToProperty = key.indexOf('__prop__') !== -1;
     const isNode = key === key.toUpperCase() || key.indexOf('__node__') !== -1;
     const isMethod = key[0] === key[0].toLowerCase() || key.indexOf('__method__') !== -1;
