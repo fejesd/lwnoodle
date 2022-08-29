@@ -1,6 +1,8 @@
 import { ClientConnection } from './clientconnection';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
+import * as _ from "lodash";
+
 const debug = Debug('Lw3Client');
 
 interface WaitListItem {
@@ -15,6 +17,7 @@ interface SubscriberEntry {
   property: string;
   value: string;
   callback: (path: string, property: string, value: any) => void;
+  subscriptionId: number;
 }
 
 interface SyncPromise {
@@ -26,6 +29,7 @@ export class Lw3Client extends EventEmitter {
   connection: ClientConnection;
   waitResponses: boolean;
   subscribers: SubscriberEntry[];
+  subscriptionCounter: number;
   signatureCounter: number;
   waitList: WaitListItem[];
   isInBlock: boolean; /* Are we in a middle of a {...} block? */
@@ -93,6 +97,7 @@ export class Lw3Client extends EventEmitter {
     this.connection = connection;
     this.waitResponses = waitresponses;
     this.subscribers = [];
+    this.subscriptionCounter = 0;
     this.waitList = [];
     this.signatureCounter = 0;
     this.isInBlock = false;
@@ -258,6 +263,12 @@ export class Lw3Client extends EventEmitter {
     debug(`Unexpected response with signature: ${signature}`); // TODO: better errorhandling
   }
 
+  private error(msg:string, reject?:(msg:any)=>void) {
+    debug(msg);
+    if (reject) reject(new Error(msg));
+    this.rejectSyncPromises(msg);
+  }
+
   /**
    * Will set a property to a specific value
    * @param property
@@ -268,19 +279,14 @@ export class Lw3Client extends EventEmitter {
     value = Lw3Client.escape(value);
     // todo sanity check
     return new Promise<void>((resolve, reject) => {
-      const error = (msg: string):void => {
-        debug(msg);
-        reject(new Error(msg));
-        this.rejectSyncPromises(msg);
-      };
       this.cmdSend(
         'SET ' + property + '=' + value.toString(),
         (data: string[], info: any) => {
-          data[0].charAt(1) !== 'E' ? resolve() : error('Error received: ' + data);
+          data[0].charAt(1) !== 'E' ? resolve() : this.error('Error received: ' + data, reject);
         },
         undefined,
         () => {
-          error('no answer, timeout');
+          this.error('no answer, timeout', reject);
           return;
         },
       );
@@ -297,37 +303,32 @@ export class Lw3Client extends EventEmitter {
     param = Lw3Client.escape(param);
     // todo sanity check
     return new Promise<string>((resolve, reject) => {
-      const error = (msg: string):void => {
-        debug(msg);
-        reject(new Error(msg));
-        this.rejectSyncPromises(msg);
-      }
       this.cmdSend(
         'CALL ' + property + '(' + param + ')',
         (data: string[], info: any) => {
           if (data.length > 1) {
-            error('GET response contains multiple lines: ' + JSON.stringify(data));
+            this.error('GET response contains multiple lines: ' + JSON.stringify(data), reject);
             return;
           } else if (data.length === 0) {
-            error('GET response contains no data!');
+            this.error('GET response contains no data!', reject);
             return;
           }
           if (!data.length) {
-            error('Empty response');
+            this.error('Empty response', reject);
             return;
           }
           const line = data[0];
           if (!line.length) {
-            error('Empty response');
+            this.error('Empty response', reject);
             return;
           }
           if (line.substring(0, 3) === 'mO ') resolve(line.substring(line.search('=') + 1, line.length));
-          else if (line.substring(0, 3) === 'mE ') error(line.substring(data[0].search('=') + 1, line.length));
-          else error('Malformed response: ' + data);
+          else if (line.substring(0, 3) === 'mE ') this.error(line.substring(data[0].search('=') + 1, line.length), reject);
+          else this.error('Malformed response: ' + data, reject);
         },
         undefined,
         () => {
-          error('no answer, timeout');
+          this.error('no answer, timeout', reject);
           return;
         },
       );
@@ -342,47 +343,22 @@ export class Lw3Client extends EventEmitter {
   GET(property: string): Promise<any> {
     const pathParts = property.split('.');
     return new Promise((resolve, reject) => {
-      const error = (msg: string): void => {
-        debug(msg);
-        reject(new Error(msg));
-        this.rejectSyncPromises(msg);
-      }
-      if (pathParts.length !== 2) error(`Getting invalid property: ${property}`);
+      if (pathParts.length !== 2) return this.error(`Getting invalid property: ${property}`, reject);
       this.cmdSend(
         'GET ' + property,
         (data: string[], info: any) => {
-          if (data.length > 1) {
-            error('GET response contains multiple lines: ' + JSON.stringify(data));
-            return;
-          } else if (data.length === 0) {
-            error('GET response contains no data!');
-            return;
-          }
-          if (!data.length) {
-            error('Empty response');
-            return;
-          }
+          if (data.length > 1) return this.error('GET response contains multiple lines: ' + JSON.stringify(data), reject);
+          else if (data.length === 0) return this.error('GET response contains no data!', reject);
+          if (!data.length) return this.error('Empty response', reject);
           const line = data[0];
-          if (!line.length) {
-            error('Empty response');
-            return;
-          }
-          if (line.charAt(0) !== 'p') {
-            error('GET response contains no property... ' + line);
-            return;
-          }
+          if (!line.length) return this.error('Empty response', reject);
+          if (line.charAt(0) !== 'p') return this.error('GET response contains no property... ' + line, reject);
           const n = line.indexOf('=');
-          if (n === -1) {
-            error('Malformed GET response: ' + line);
-            return;
-          }
+          if (n === -1) return this.error('Malformed GET response: ' + line, reject);
           resolve(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length))));
         },
         undefined,
-        () => {
-          error('no answer, timeout');
-          return;
-        },
+        () => this.error('no answer, timeout', reject)
       );
     });
   }
@@ -403,8 +379,7 @@ export class Lw3Client extends EventEmitter {
   ): Promise<number> {
     // todo sanity check
     if (path[path.length - 1] === '/') path = path.slice(0, -1);
-    let alreadyOpen = false;
-    for (const subscriber of this.subscribers) if (subscriber.path === path) alreadyOpen = true;
+    const alreadyOpen = _.findIndex(this.subscribers, {path}) !== -1;
     return new Promise<number>((resolve, reject) => {
       if (!alreadyOpen) {
         this.cmdSend('OPEN ' + path, (data: string[], info: any) => {
@@ -413,13 +388,29 @@ export class Lw3Client extends EventEmitter {
             reject();
             return;
           }
-          this.subscribers.push({ path, property, value, callback });
-          resolve(this.subscribers.length);
+          this.subscribers.push({ path, property, value, callback, subscriptionId:this.subscriptionCounter++ });
+          resolve(this.subscriptionCounter);
         });
       } else {
-        this.subscribers.push({ path, property, value, callback });
-        resolve(this.subscribers.length);
+        debug(`${path} is already opened`);
+        this.subscribers.push({ path, property, value, callback, subscriptionId:this.subscriptionCounter++ });
+        resolve(this.subscriptionCounter);
       }
+    });
+  }
+
+  CLOSE(subscriptionId: number):Promise<void> {
+    return new Promise((resolve, reject)=>{
+    const subscriptionIndex = _.findIndex(this.subscribers, {subscriptionId});
+    if (subscriptionIndex === -1) {
+      reject();
+      return;
+    }
+    const path = this.subscribers[subscriptionIndex].path;
+    this.subscribers.slice(subscriptionIndex,1);
+    if (_.findIndex(this.subscribers, {path}) === -1) {  // there are no other subscription to this node
+
+    }
     });
   }
 

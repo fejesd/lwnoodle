@@ -44,6 +44,7 @@ test('escaping and unescaping', () => {
     ['árvíztűrő tükörfúrógép', 'árvíztűrő tükörfúrógép'],
     ['test\nelek\ntest\ttest\ttest', 'test\\nelek\\ntest\\ttest\\ttest'],
     ['hello{}\\()', 'hello\\{\\}\\\\\\(\\)'],
+    ['test#dfs%dfsd','test\\#dfs\\%dfsd']
   ];
   for (const test of testbenches) {
     expect(Lw3Client.escape(test[0])).toBe(test[1]);
@@ -103,7 +104,7 @@ test('CALL', async () => {
       expect(test).toStrictEqual(testbench[3]);
     } catch (err) {
       expect(testbench[3]).toBe(undefined);
-      if (testbench[4]) expect((err as Error).toString()).toBe('Error: ' + testbench[4]);
+      if (testbench[4]) expect((err as Error).toString()).toBe('Error: '+testbench[4]);
     }
   }
 });

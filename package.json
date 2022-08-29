@@ -39,6 +39,7 @@
   "devDependencies": {
     "@types/debug": "^4.1.7",
     "@types/jest": "^28.1.7",
+    "@types/lodash": "^4.14.184",
     "jest": "^28.1.3",
     "jest-coverage-badges": "^1.1.2",
     "pre-commit": "^1.2.2",
@@ -52,6 +53,7 @@
     "lib/**/*"
   ],
   "dependencies": {
-    "debug": "^4.3.4"
+    "debug": "^4.3.4",
+    "lodash": "^4.17.21"
   }
 }
