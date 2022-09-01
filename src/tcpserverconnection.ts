@@ -104,6 +104,10 @@ export class TcpServerConnection extends EventEmitter {
    * @returns
    */
   write(socketId: number, msg: string): void {
+    if (socketId === -1) {
+      Object.keys(this.sockets).forEach((key) => this.write(parseInt(key, 10), msg));
+      return;
+    }
     if (!(socketId in this.sockets)) {
       debug(`Error during write, unknown socketId: ${socketId}`);
       return; // fire an exception?

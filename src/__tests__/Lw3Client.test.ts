@@ -20,7 +20,7 @@ beforeAll(async () => {
   server.on('frame', (id, data) => {
     const parts = data.split('#');
     expect(parts[1]).toBe(expectedMessage);
-    if (mockedResponse.length) server.write(1, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
+    if (mockedResponse.length) server.write(id, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
   });
 });
 
@@ -163,4 +163,29 @@ test('multiple OPEN and CLOSE, handling subscription list', async () => {
   mockedResponse = 'c- /TEST/B';
   await client.CLOSE(id4);
   expect(client['subscribers'].length).toBe(0);
+});
+
+test('callback is called when CHG was received on an opened node', async () => {
+  expectedMessage = 'OPEN /TEST/A';
+  mockedResponse = 'o- /TEST/A';
+  let cb1 = jest.fn();
+  let id1 = await client.OPEN('/TEST/A', cb1);
+
+  server.write(-1, 'CHG /TEST/B.test1=somevalue\r\n');
+  server.write(-1, 'CHG /TEST/A.test2=someothervalue\r\n');
+  server.write(-1, 'CHG /TEST/C.test1=somevalue\r\n');
+  server.write(-1, 'CHG /TEST/A.test3=somethirdvalue\r\n');
+  await sleep(10); // todo doing better
+
+  expect(cb1.mock.calls.length).toBe(2);
+  expect(cb1.mock.calls[0][0]).toBe('/TEST/A');
+  expect(cb1.mock.calls[0][1]).toBe('test2');
+  expect(cb1.mock.calls[0][2]).toBe('someothervalue');
+  expect(cb1.mock.calls[1][0]).toBe('/TEST/A');
+  expect(cb1.mock.calls[1][1]).toBe('test3');
+  expect(cb1.mock.calls[1][2]).toBe('somethirdvalue');
+
+  expectedMessage = 'CLOSE /TEST/A';
+  mockedResponse = 'c- /TEST/A';
+  await client.CLOSE(id1);
 });
