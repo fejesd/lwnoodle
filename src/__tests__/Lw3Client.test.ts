@@ -169,7 +169,9 @@ test('callback is called when CHG was received on an opened node', async () => {
   expectedMessage = 'OPEN /TEST/A';
   mockedResponse = 'o- /TEST/A';
   let cb1 = jest.fn();
+  let cb2 = jest.fn();
   let id1 = await client.OPEN('/TEST/A', cb1);
+  let id2 = await client.OPEN('/TEST/A', cb2);
 
   server.write(-1, 'CHG /TEST/B.test1=somevalue\r\n');
   server.write(-1, 'CHG /TEST/A.test2=someothervalue\r\n');
@@ -185,7 +187,17 @@ test('callback is called when CHG was received on an opened node', async () => {
   expect(cb1.mock.calls[1][1]).toBe('test3');
   expect(cb1.mock.calls[1][2]).toBe('somethirdvalue');
 
+  expect(cb2.mock.calls.length).toBe(2);
+  expect(cb2.mock.calls[0][0]).toBe('/TEST/A');
+  expect(cb2.mock.calls[0][1]).toBe('test2');
+  expect(cb2.mock.calls[0][2]).toBe('someothervalue');
+  expect(cb2.mock.calls[1][0]).toBe('/TEST/A');
+  expect(cb2.mock.calls[1][1]).toBe('test3');
+  expect(cb2.mock.calls[1][2]).toBe('somethirdvalue');
+
   expectedMessage = 'CLOSE /TEST/A';
   mockedResponse = 'c- /TEST/A';
   await client.CLOSE(id1);
+  await client.CLOSE(id2);
+
 });
