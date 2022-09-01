@@ -34,20 +34,33 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
     const last = target.path[target.path.length - 1];
     const path = '/' + target.path.slice(0, -1).join('/');
     if (last === 'addListener') {
-      target.lw3client.OPEN(path, args[0], args[1], (cbpath: string, cbproperty: string, cbvalue: string) =>
-        args[2](cbpath, cbproperty, cbvalue),
+      target.lw3client.OPEN(
+        path,
+        (cbpath: string, cbproperty: string, cbvalue: string) => args[2](cbpath, cbproperty, cbvalue),
+        args[0],
+        args[1],
       );
     } else if (last === 'once') {
-      target.lw3client.OPEN(path, args[0], args[1], (cbpath: string, cbproperty: string, cbvalue: string) => {
-        // target.lw3client.removeListener(this);  // TODO
-        args[2](cbpath, cbproperty, cbvalue);
-      });
+      target.lw3client.OPEN(
+        path,
+        (cbpath: string, cbproperty: string, cbvalue: string) => {
+          // target.lw3client.removeListener(this);  // TODO
+          args[2](cbpath, cbproperty, cbvalue);
+        },
+        args[0],
+        args[1],
+      );
     } else if (last === 'waitFor') {
       return new Promise<string>((resolve, reject) => {
-        target.lw3client.OPEN(path, args[0], args[1], (cbpath: string, cbproperty: string, cbvalue: string) => {
-          // target.lw3client.removeListener(this); // TODO
-          resolve(cbvalue);
-        });
+        target.lw3client.OPEN(
+          path,
+          (cbpath: string, cbproperty: string, cbvalue: string) => {
+            // target.lw3client.removeListener(this); // TODO
+            resolve(cbvalue);
+          },
+          args[0],
+          args[1],
+        );
       });
     } else {
       // method invocation
@@ -77,18 +90,18 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
     }
   },
 
-  set(target: NoodleClientObject, key: string, value: string): boolean {    
+  set(target: NoodleClientObject, key: string, value: string): boolean {
     key = key.replace('__prop__', '');
     // unfortunately ProxyHandler.set should return immediately with a boolean, there is no way to make it async
-    // therefore we will catch the rejections from lw3client.SET here and drop them. __sync__() call should be used after set if error detection is important.    
-    (async ()=>{
+    // therefore we will catch the rejections from lw3client.SET here and drop them. __sync__() call should be used after set if error detection is important.
+    (async () => {
       try {
-        await target.lw3client.SET('/' + target.path.join('/') + '.' + key, value);  
+        await target.lw3client.SET('/' + target.path.join('/') + '.' + key, value);
       } catch (e) {
         debug('SET command has been rejected');
       }
-    })();    
-    return true; 
+    })();
+    return true;
   },
 };
 

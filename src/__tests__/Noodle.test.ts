@@ -134,12 +134,12 @@ test('property set to a string', async () => {
   expect(receivedMessage).toBe(expectedMessage);
 });
 
-test('sync should fail when no response is get for SET', async() => {
+test('sync should fail when no response is get for SET', async () => {
   expectedMessage = 'SET /NODE/TEST.Property=hello\\tworld';
-  mockedResponse = '';  
+  mockedResponse = '';
   noodle.NODE.TEST.Property = 'hello\tworld';
   try {
-    await noodle.__sync__(); 
+    await noodle.__sync__();
     fail('no exception');
   } catch (errormsg) {
     debug(errormsg);

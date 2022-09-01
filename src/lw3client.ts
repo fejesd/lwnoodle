@@ -1,7 +1,7 @@
 import { ClientConnection } from './clientconnection';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
-import * as _ from "lodash";
+import * as _ from 'lodash';
 
 const debug = Debug('Lw3Client');
 
@@ -21,8 +21,8 @@ interface SubscriberEntry {
 }
 
 interface SyncPromise {
-  resolve: () => void,
-  reject: (msg:string) => void
+  resolve: () => void;
+  reject: (msg: string) => void;
 }
 
 export class Lw3Client extends EventEmitter {
@@ -185,9 +185,9 @@ export class Lw3Client extends EventEmitter {
     }
   }
 
-  private rejectSyncPromises(err:string) {
+  private rejectSyncPromises(err: string) {
     if (this.syncPromises.length) {
-      debug('rejecting all sync promises: '+err);
+      debug('rejecting all sync promises: ' + err);
       for (const promise of this.syncPromises) promise.reject(err); // fullfill all promises
       this.syncPromises = [];
     }
@@ -263,7 +263,7 @@ export class Lw3Client extends EventEmitter {
     debug(`Unexpected response with signature: ${signature}`); // TODO: better errorhandling
   }
 
-  private error(msg:string, reject?:(msg:any)=>void) {
+  private error(msg: string, reject?: (msg: any) => void) {
     debug(msg);
     if (reject) reject(new Error(msg));
     this.rejectSyncPromises(msg);
@@ -323,7 +323,8 @@ export class Lw3Client extends EventEmitter {
             return;
           }
           if (line.substring(0, 3) === 'mO ') resolve(line.substring(line.search('=') + 1, line.length));
-          else if (line.substring(0, 3) === 'mE ') this.error(line.substring(data[0].search('=') + 1, line.length), reject);
+          else if (line.substring(0, 3) === 'mE ')
+            this.error(line.substring(data[0].search('=') + 1, line.length), reject);
           else this.error('Malformed response: ' + data, reject);
         },
         undefined,
@@ -347,7 +348,8 @@ export class Lw3Client extends EventEmitter {
       this.cmdSend(
         'GET ' + property,
         (data: string[], info: any) => {
-          if (data.length > 1) return this.error('GET response contains multiple lines: ' + JSON.stringify(data), reject);
+          if (data.length > 1)
+            return this.error('GET response contains multiple lines: ' + JSON.stringify(data), reject);
           else if (data.length === 0) return this.error('GET response contains no data!', reject);
           if (!data.length) return this.error('Empty response', reject);
           const line = data[0];
@@ -358,7 +360,7 @@ export class Lw3Client extends EventEmitter {
           resolve(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length))));
         },
         undefined,
-        () => this.error('no answer, timeout', reject)
+        () => this.error('no answer, timeout', reject),
       );
     });
   }
@@ -373,13 +375,13 @@ export class Lw3Client extends EventEmitter {
    */
   OPEN(
     path: string,
-    property: string,
-    value: string,
     callback: (path: string, property: string, value: string) => void,
+    property: string = '',
+    value: string = '',
   ): Promise<number> {
     // todo sanity check
     if (path[path.length - 1] === '/') path = path.slice(0, -1);
-    const alreadyOpen = _.findIndex(this.subscribers, {path}) !== -1;
+    const alreadyOpen = _.findIndex(this.subscribers, { path }) !== -1;
     return new Promise<number>((resolve, reject) => {
       if (!alreadyOpen) {
         this.cmdSend('OPEN ' + path, (data: string[], info: any) => {
@@ -388,29 +390,46 @@ export class Lw3Client extends EventEmitter {
             reject();
             return;
           }
-          this.subscribers.push({ path, property, value, callback, subscriptionId:this.subscriptionCounter++ });
-          resolve(this.subscriptionCounter);
+          this.subscribers.push({ path, property, value, callback, subscriptionId: this.subscriptionCounter });
+          resolve(this.subscriptionCounter++);
         });
       } else {
         debug(`${path} is already opened`);
-        this.subscribers.push({ path, property, value, callback, subscriptionId:this.subscriptionCounter++ });
-        resolve(this.subscriptionCounter);
+        this.subscribers.push({ path, property, value, callback, subscriptionId: this.subscriptionCounter });
+        resolve(this.subscriptionCounter++);
       }
     });
   }
 
-  CLOSE(subscriptionId: number):Promise<void> {
-    return new Promise((resolve, reject)=>{
-    const subscriptionIndex = _.findIndex(this.subscribers, {subscriptionId});
-    if (subscriptionIndex === -1) {
-      reject();
-      return;
-    }
-    const path = this.subscribers[subscriptionIndex].path;
-    this.subscribers.slice(subscriptionIndex,1);
-    if (_.findIndex(this.subscribers, {path}) === -1) {  // there are no other subscription to this node
+  /**
+   * Closes a subscription by ID
+   * @param subscriptionId The ID of the subscription (returned by OPEN call)
+   * @returns
+   */
 
-    }
+  CLOSE(subscriptionId: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const subscriptionIndex = _.findIndex(this.subscribers, { subscriptionId });
+      if (subscriptionIndex === -1) {
+        reject();
+        return;
+      }
+      const path = this.subscribers[subscriptionIndex].path;
+      this.subscribers.splice(subscriptionIndex, 1);
+      if (_.findIndex(this.subscribers, { path }) === -1) {
+        // there are no other subscription to this node
+        this.cmdSend('CLOSE ' + path, (data: string[], info: any) => {
+          if (data[0] !== 'c- ' + path) {
+            debug(`Strange response to CLOSE command: ${data[0]}`);
+            reject();
+            return;
+          }
+          resolve();
+        });
+      } else {
+        // there are other subscriptions, dont close the node yet
+        resolve();
+      }
     });
   }
 
@@ -432,7 +451,7 @@ export class Lw3Client extends EventEmitter {
         return;
       }
       debug('sync request has been queued');
-      this.syncPromises.push({resolve, reject});
+      this.syncPromises.push({ resolve, reject });
     });
     return promise;
   }

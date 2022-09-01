@@ -44,7 +44,7 @@ test('escaping and unescaping', () => {
     ['árvíztűrő tükörfúrógép', 'árvíztűrő tükörfúrógép'],
     ['test\nelek\ntest\ttest\ttest', 'test\\nelek\\ntest\\ttest\\ttest'],
     ['hello{}\\()', 'hello\\{\\}\\\\\\(\\)'],
-    ['test#dfs%dfsd','test\\#dfs\\%dfsd']
+    ['test#dfs%dfsd', 'test\\#dfs\\%dfsd'],
   ];
   for (const test of testbenches) {
     expect(Lw3Client.escape(test[0])).toBe(test[1]);
@@ -104,7 +104,7 @@ test('CALL', async () => {
       expect(test).toStrictEqual(testbench[3]);
     } catch (err) {
       expect(testbench[3]).toBe(undefined);
-      if (testbench[4]) expect((err as Error).toString()).toBe('Error: '+testbench[4]);
+      if (testbench[4]) expect((err as Error).toString()).toBe('Error: ' + testbench[4]);
     }
   }
 });
@@ -124,4 +124,43 @@ test('SET', async () => {
       expect(testbench[3]).toBe(false);
     }
   }
+});
+
+test('multiple OPEN and CLOSE, handling subscription list', async () => {
+  expectedMessage = 'OPEN /TEST/A';
+  mockedResponse = 'o- /TEST/A';
+  let cb1 = jest.fn();
+  let id1 = await client.OPEN('/TEST/A', cb1);
+
+  expectedMessage = '';
+  let cb2 = jest.fn();
+  let id2 = await client.OPEN('/TEST/A', cb2);
+
+  let cb3 = jest.fn();
+  let id3 = await client.OPEN('/TEST/A', cb2, 'testprop', 'testval');
+
+  expectedMessage = 'OPEN /TEST/B';
+  mockedResponse = 'o- /TEST/B';
+
+  let cb4 = jest.fn();
+  let id4 = await client.OPEN('/TEST/B', cb2, 'testprop', 'testval');
+
+  expect(client['subscribers'].length).toBe(4);
+
+  expectedMessage = '';
+  await client.CLOSE(id3);
+  expect(client['subscribers'].length).toBe(3);
+
+  await client.CLOSE(id2);
+  expect(client['subscribers'].length).toBe(2);
+
+  expectedMessage = 'CLOSE /TEST/A';
+  mockedResponse = 'c- /TEST/A';
+  await client.CLOSE(id1);
+  expect(client['subscribers'].length).toBe(1);
+
+  expectedMessage = 'CLOSE /TEST/B';
+  mockedResponse = 'c- /TEST/B';
+  await client.CLOSE(id4);
+  expect(client['subscribers'].length).toBe(0);
 });
