@@ -134,13 +134,13 @@ test('multiple OPEN and CLOSE, handling subscription list', async () => {
   const id2 = await client.OPEN('/TEST/A', cb2);
 
   const cb3 = jest.fn();
-  const id3 = await client.OPEN('/TEST/A', cb2, 'testprop', 'testval');
+  const id3 = await client.OPEN('/TEST/A', cb2, 'testprop');
 
   expectedMessage = 'OPEN /TEST/B';
   mockedResponse = 'o- /TEST/B';
 
   const cb4 = jest.fn();
-  const id4 = await client.OPEN('/TEST/B', cb2, 'testprop', 'testval');
+  const id4 = await client.OPEN('/TEST/B', cb2, 'testprop');
 
   expect(client['subscribers'].length).toBe(4);
 
@@ -197,3 +197,47 @@ test('callback is called when CHG was received on an opened node', async () => {
   await client.CLOSE(id1);
   await client.CLOSE(id2);
 });
+
+test('callback is called only when CHG was received on an opened node with a specific property', async () => {
+  expectedMessage = 'OPEN /TEST/A';
+  mockedResponse = 'o- /TEST/A';
+  const cb1 = jest.fn();
+  const id1 = await client.OPEN('/TEST/A', cb1, 'SignalPresent');
+
+  server.write(-1, 'CHG /TEST/A.test1=somevalue\r\n');
+  server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
+  server.write(-1, 'CHG /TEST/A.SignalPresent2=2\r\n');
+  await sleep(10); // todo doing better
+
+  expect(cb1.mock.calls.length).toBe(1);
+  expect(cb1.mock.calls[0][0]).toBe('/TEST/A');
+  expect(cb1.mock.calls[0][1]).toBe('SignalPresent');
+  expect(cb1.mock.calls[0][2]).toBe(true);
+
+  expectedMessage = 'CLOSE /TEST/A';
+  mockedResponse = 'c- /TEST/A';
+  await client.CLOSE(id1);
+});
+
+test('callback is called only when CHG was received on an opened node with a specific property and value', async () => {
+  expectedMessage = 'OPEN /TEST/A';
+  mockedResponse = 'o- /TEST/A';
+  const cb1 = jest.fn();
+  const id1 = await client.OPEN('/TEST/A', cb1, 'SignalPresent=true');
+
+  server.write(-1, 'CHG /TEST/A.test1=somevalue\r\n');
+  server.write(-1, 'CHG /TEST/A.SignalPresent=false\r\n');
+  server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
+  server.write(-1, 'CHG /TEST/A.SignalPresent2=2\r\n');
+  await sleep(10); // todo doing better
+
+  expect(cb1.mock.calls.length).toBe(1);
+  expect(cb1.mock.calls[0][0]).toBe('/TEST/A');
+  expect(cb1.mock.calls[0][1]).toBe('SignalPresent');
+  expect(cb1.mock.calls[0][2]).toBe(true);
+
+  expectedMessage = 'CLOSE /TEST/A';
+  mockedResponse = 'c- /TEST/A';
+  await client.CLOSE(id1);
+});
+

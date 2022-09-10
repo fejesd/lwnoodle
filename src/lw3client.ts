@@ -352,23 +352,29 @@ export class Lw3Client extends EventEmitter {
   /**
    * It will OPEN a node and watch for changing data
    * @param path      path to the node
-   * @param property  optional. you can watch only single property if you like. Set it empty if not needed
-   * @param value     optional. you can watch for a specific value only if you like. Set it empty if not needed
    * @param callback  callback function will notified about changes
+   * @param rule  optional. you can watch property and also a value if you like. Set it empty if not needed   
    * @returns Promise rejects on failure. Promise return an ID number, which can be used for removing the watch entry later.
    */
-  OPEN(path: string, callback: (path: string, property: string, value: string) => void, property: string = '', value: string = ''): Promise<number> {
+  OPEN(path: string, callback: (path: string, property: string, value: string) => void, rule: string = ''): Promise<number> {
     // todo sanity check
     if (path[path.length - 1] === '/') path = path.slice(0, -1);
     const alreadyOpen = _.findIndex(this.subscribers, { path }) !== -1;
     return new Promise<number>((resolve, reject) => {
+      let property = '';
+      let value = '';
+      if (rule !== '') {
+        const ruleparts = rule.split('=');        
+        property = ruleparts[0];
+        if (ruleparts.length > 1) value = ruleparts[1];
+      }
       if (!alreadyOpen) {
         this.cmdSend('OPEN ' + path, (data: string[], info: any) => {
           if (data[0].charAt(0) !== 'o' || data[0].search(path) === -1) {
             debug(`Strange response to OPEN command: ${data[0]}`);
             reject();
             return;
-          }
+          }          
           this.subscribers.push({ path, property, value, callback, subscriptionId: this.subscriptionCounter });
           resolve(this.subscriptionCounter++);
         });

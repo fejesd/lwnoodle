@@ -34,7 +34,7 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
     const last = target.path[target.path.length - 1];
     const path = '/' + target.path.slice(0, -1).join('/');
     if (last === 'addListener') {
-      target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[2](cbpath, cbproperty, cbvalue), args[0], args[1]);
+      target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[2](cbpath, cbproperty, cbvalue), args[0]);
     } else if (last === 'once') {
       target.lw3client.OPEN(
         path,
@@ -42,8 +42,7 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
           // target.lw3client.removeListener(this);  // TODO
           args[2](cbpath, cbproperty, cbvalue);
         },
-        args[0],
-        args[1],
+        args[0]        
       );
     } else if (last === 'waitFor') {
       return new Promise<string>((resolve, reject) => {
@@ -53,8 +52,7 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
             // target.lw3client.removeListener(this); // TODO
             resolve(cbvalue);
           },
-          args[0],
-          args[1],
+          args[0]          
         );
       });
     } else {
