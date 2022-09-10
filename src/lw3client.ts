@@ -227,7 +227,7 @@ export class Lw3Client extends EventEmitter {
     const propname = proppath.substring(proppath.indexOf('.') + 1, proppath.length);
     const value = Lw3Client.unescape(data.substring(eq + 1, data.length));
     // notify subscribers
-    const subscriptionsToClose:number[] = [];
+    const subscriptionsToClose: number[] = [];
     this.subscribers.forEach((i) => {
       if (i.path === nodepath) {
         if (i.property === '*' || i.property === '' || i.property === propname) {
@@ -241,7 +241,7 @@ export class Lw3Client extends EventEmitter {
         }
       }
     });
-    subscriptionsToClose.forEach((x:number)=>this.CLOSE(x));
+    subscriptionsToClose.forEach((x: number) => this.CLOSE(x));
   }
 
   /* Called when a new block (in {...} parenthesis) has been arrived with a signature*/
@@ -364,7 +364,7 @@ export class Lw3Client extends EventEmitter {
    * @param count optional. After calling the callback count times, the subscription will be closed automatically
    * @returns Promise rejects on failure. Promise return an ID number, which can be used for removing the watch entry later.
    */
-  OPEN(path: string, callback: (path: string, property: string, value: string) => void, rule: string = '', count=-1): Promise<number> {
+  OPEN(path: string, callback: (path: string, property: string, value: string) => void, rule: string = '', count = -1): Promise<number> {
     // todo sanity check
     if (path[path.length - 1] === '/') path = path.slice(0, -1);
     const alreadyOpen = _.findIndex(this.subscribers, { path }) !== -1;
@@ -404,10 +404,9 @@ export class Lw3Client extends EventEmitter {
     return new Promise((resolve, reject) => {
       let subscriptionIndex = -1;
       debug(JSON.stringify(subscriptionId));
-      if (typeof(subscriptionId) === 'number')
-          subscriptionIndex = _.findIndex(this.subscribers, { subscriptionId:subscriptionId as number });
-      else if (typeof(subscriptionId) === 'function') {
-          subscriptionIndex = _.findIndex(this.subscribers, { callback: subscriptionId as (path: string, property: string, value: any) => void });                  
+      if (typeof subscriptionId === 'number') subscriptionIndex = _.findIndex(this.subscribers, { subscriptionId: subscriptionId as number });
+      else if (typeof subscriptionId === 'function') {
+        subscriptionIndex = _.findIndex(this.subscribers, { callback: subscriptionId as (path: string, property: string, value: any) => void });
       }
       if (subscriptionIndex === -1) {
         reject();
