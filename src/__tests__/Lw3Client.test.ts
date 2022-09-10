@@ -3,7 +3,7 @@ import { TcpServerConnection } from '../tcpserverconnection';
 import Debug from 'debug';
 import { sleep, waitForAnEvent } from './helpers';
 import { TcpClientConnection } from '../tcpclientconnection';
-import { extendWith } from 'lodash';
+import { extendWith, isArguments } from 'lodash';
 const debug = Debug('Test');
 
 Debug.enable('TcpServerConnection,Test,Lw3Client');
@@ -174,7 +174,11 @@ test('callback is called when CHG was received on an opened node', async () => {
   server.write(-1, 'CHG /TEST/A.test2=someothervalue\r\n');
   server.write(-1, 'CHG /TEST/C.test1=somevalue\r\n');
   server.write(-1, 'CHG /TEST/A.test3=somethirdvalue\r\n');
-  await sleep(10); // todo doing better
+  await new Promise<void>((resolve, reject)=>{  
+    let n=0;
+    const handler = ()=>{ n++; if (n === 4) { client.connection.removeListener('frame', handler); resolve(); }};
+    client.connection.on('frame',handler);
+  }); 
 
   expect(cb1.mock.calls.length).toBe(2);
   expect(cb1.mock.calls[0][0]).toBe('/TEST/A');
@@ -207,7 +211,11 @@ test('callback is called only when CHG was received on an opened node with a spe
   server.write(-1, 'CHG /TEST/A.test1=somevalue\r\n');
   server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
   server.write(-1, 'CHG /TEST/A.SignalPresent2=2\r\n');
-  await sleep(10); // todo doing better
+  await new Promise<void>((resolve, reject)=>{  
+    let n=0;
+    const handler = ()=>{ n++; if (n === 3) { client.connection.removeListener('frame', handler); resolve(); }};
+    client.connection.on('frame',handler);
+  }); 
 
   expect(cb1.mock.calls.length).toBe(1);
   expect(cb1.mock.calls[0][0]).toBe('/TEST/A');
@@ -229,7 +237,11 @@ test('callback is called only when CHG was received on an opened node with a spe
   server.write(-1, 'CHG /TEST/A.SignalPresent=false\r\n');
   server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
   server.write(-1, 'CHG /TEST/A.SignalPresent2=2\r\n');
-  await sleep(10); // todo doing better
+  await new Promise<void>((resolve, reject)=>{  
+    let n=0;
+    const handler = ()=>{ n++; if (n === 4) { client.connection.removeListener('frame', handler); resolve(); }};
+    client.connection.on('frame',handler);
+  }); 
 
   expect(cb1.mock.calls.length).toBe(1);
   expect(cb1.mock.calls[0][0]).toBe('/TEST/A');
@@ -240,4 +252,3 @@ test('callback is called only when CHG was received on an opened node with a spe
   mockedResponse = 'c- /TEST/A';
   await client.CLOSE(id1);
 });
-

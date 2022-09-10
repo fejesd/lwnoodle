@@ -42,7 +42,7 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
           // target.lw3client.removeListener(this);  // TODO
           args[2](cbpath, cbproperty, cbvalue);
         },
-        args[0]        
+        args[0],
       );
     } else if (last === 'waitFor') {
       return new Promise<string>((resolve, reject) => {
@@ -52,7 +52,7 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
             // target.lw3client.removeListener(this); // TODO
             resolve(cbvalue);
           },
-          args[0]          
+          args[0],
         );
       });
     } else {
