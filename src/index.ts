@@ -29,26 +29,28 @@ class NoodleClientObject {
   }
 }
 
-function obj2fun(object:object):()=>void {
-	// Converts the given dictionary into a function, thus we can create apply proxy around it
+function obj2fun(object: object): () => void {
+  // Converts the given dictionary into a function, thus we can create apply proxy around it
   // you can use apply() on functions, that's why we should convert dictionaries to functions
-	const func = () => {/* */};
-    for(const prop in object){
-        if(object.hasOwnProperty(prop)){
-            func[prop as keyof typeof func] = object[prop as keyof object];
-        }
+  const func = () => {
+    /* */
+  };
+  for (const prop in object) {
+    if (object.hasOwnProperty(prop)) {
+      func[prop as keyof typeof func] = object[prop as keyof object];
     }
-    return func;
+  }
+  return func;
 }
 
-const NoodleProxyHandler: ProxyHandler<()=>void> = {
+const NoodleProxyHandler: ProxyHandler<() => void> = {
   async apply(target: any, ctx: string, args: any[]) {
     const last = target.path[target.path.length - 1];
-    const path = '/' + target.path.slice(0, -1).join('/');    
+    const path = '/' + target.path.slice(0, -1).join('/');
     if (last === 'addListener') {
       return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), args[1]);
     } else if (last === 'closeListener') {
-        return target.lw3client.CLOSE(args[0]);
+      return target.lw3client.CLOSE(args[0]);
     } else if (last === 'once') {
       return target.lw3client.OPEN(
         path,

@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { ClientConnection } from '../clientconnection';
 
 /**
  * Will wait for an eventName event on obj object. It will reject if timeout has been reached.
@@ -27,4 +28,18 @@ export async function waitForAnEvent(obj: EventEmitter, eventName: string, debug
 
 export function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function waitLinesRcv(c:ClientConnection, cnt:number): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    let n = 0;
+    const handler = () => {
+      n++;
+      if (n === cnt) {
+        c.removeListener('frame', handler);
+        resolve();
+      }
+    };
+    c.on('frame', handler);
+  });
 }

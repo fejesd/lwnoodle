@@ -363,8 +363,8 @@ export class Lw3Client extends EventEmitter {
     return new Promise<number>((resolve, reject) => {
       let property = '';
       let value = '';
-      if (rule) {        
-        const ruleparts = rule.split('=');        
+      if (rule) {
+        const ruleparts = rule.split('=');
         property = ruleparts[0];
         if (ruleparts.length > 1) value = ruleparts[1];
       }
@@ -374,7 +374,7 @@ export class Lw3Client extends EventEmitter {
             debug(`Strange response to OPEN command: ${data[0]}`);
             reject();
             return;
-          }          
+          }
           this.subscribers.push({ path, property, value, callback, subscriptionId: this.subscriptionCounter });
           resolve(this.subscriptionCounter++);
         });

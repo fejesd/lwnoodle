@@ -1,5 +1,5 @@
 import { Noodle } from '../index';
-import { sleep, waitForAnEvent } from './helpers';
+import { sleep, waitForAnEvent, waitLinesRcv } from './helpers';
 import { TcpServerConnection } from '../tcpserverconnection';
 import Debug from 'debug';
 const debug = Debug('Test');
@@ -25,7 +25,7 @@ beforeAll(async () => {
   });
 });
 
-afterAll(async () => {  
+afterAll(async () => {
   noodle.__close__();
   await waitForAnEvent(noodle.lw3client, 'close', debug);
   server.close();
@@ -39,6 +39,10 @@ beforeEach(() => {
   debug('=======' + expect.getState().currentTestName + '=======');
   debug('');
 });
+
+//
+// get
+//
 
 test('Noodle GET basic property access', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
@@ -125,6 +129,10 @@ test('property return value as an array if result is a list', async () => {
   expect(result).toStrictEqual([12, 'hello', false]);
 });
 
+//
+// set
+//
+
 test('property set to a string', async () => {
   expectedMessage = 'SET /NODE/TEST.Property=hello\\tworld';
   mockedResponse = 'pw /NODE/TEST.Property=hello\\tworld';
@@ -147,39 +155,47 @@ test('sync should fail when no response is get for SET', async () => {
   expect(receivedMessage).toBe(expectedMessage);
 });
 
-test('method call should return with the answer', async() =>{
+//
+// method call
+//
+
+test('method call should return with the answer', async () => {
   expectedMessage = 'CALL /PATH/TO/TEST/NODE:test(true,false)';
   mockedResponse = 'mO /PATH/TO/TEST/NODE:test=answer';
 
-  const answer = await noodle.PATH.TO.TEST.NODE.test(true,false);
+  const answer = await noodle.PATH.TO.TEST.NODE.test(true, false);
   expect(receivedMessage).toBe(expectedMessage);
   expect(answer).toBe('answer');
 });
 
-test('method call should return empty string when there is no return value', async() =>{
+test('method call should return empty string when there is no return value', async () => {
   expectedMessage = 'CALL /PATH/TO/TEST/NODE:test(1,2,3)';
   mockedResponse = 'mO /PATH/TO/TEST/NODE:test';
 
-  const answer = await noodle.PATH.TO.TEST.NODE.test(1,2,3);
+  const answer = await noodle.PATH.TO.TEST.NODE.test(1, 2, 3);
   expect(receivedMessage).toBe(expectedMessage);
   expect(answer).toBe('');
 });
 
-test('method call should raise an exception when error has returned', async() =>{
+test('method call should raise an exception when error has returned', async () => {
   expectedMessage = 'CALL /PATH/TO/TEST/NODE:test(true,false)';
-  mockedResponse = 'mE /PATH/TO/TEST/NODE:test=answer';  
-  await expect(noodle.PATH.TO.TEST.NODE.test(true,false)).rejects.toEqual(Error('answer'));
+  mockedResponse = 'mE /PATH/TO/TEST/NODE:test=answer';
+  await expect(noodle.PATH.TO.TEST.NODE.test(true, false)).rejects.toEqual(Error('answer'));
   expect(receivedMessage).toBe(expectedMessage);
 });
 
-test('method call should raise an exception when junk returned', async() =>{
+test('method call should raise an exception when junk returned', async () => {
   expectedMessage = 'CALL /PATH/TO/TEST/NODE:test(true,false)';
-  mockedResponse = 'junk';  
-  await expect(noodle.PATH.TO.TEST.NODE.test(true,false)).rejects.toBeDefined();
+  mockedResponse = 'junk';
+  await expect(noodle.PATH.TO.TEST.NODE.test(true, false)).rejects.toBeDefined();
   expect(receivedMessage).toBe(expectedMessage);
 });
 
-test('addListener should call the callback when needed', async() =>{
+//
+// addListener
+//
+
+test('addListener should call the callback when needed', async () => {
   expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
   mockedResponse = 'o- /PATH/TO/TEST/NODE';
 
@@ -187,6 +203,78 @@ test('addListener should call the callback when needed', async() =>{
   const id1 = await noodle.PATH.TO.TEST.NODE.addListener(cb1);
   expect(receivedMessage).toBe(expectedMessage);
 
+  server.write(-1, 'CHG /TEST/A.test1=somevalue\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
+  server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
+  server.write(-1, 'CHG /TEST/A.SignalPresent2=2\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+  await waitLinesRcv(noodle.lw3client.connection, 5);
+
+  expect(cb1.mock.calls.length).toBe(2);
+  expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/TEST/NODE');
+  expect(cb1.mock.calls[0][1]).toBe('SignalPresent');
+  expect(cb1.mock.calls[0][2]).toBe(false);
+  expect(cb1.mock.calls[1][0]).toBe('/PATH/TO/TEST/NODE');
+  expect(cb1.mock.calls[1][1]).toBe('SignalPresent');
+  expect(cb1.mock.calls[1][2]).toBe(true);
+
+
+  expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
+  mockedResponse = 'c- /PATH/TO/TEST/NODE';
+  await noodle.PATH.TO.TEST.NODE.closeListener(id1);
+  expect(receivedMessage).toBe(expectedMessage);
+});
+
+test('addListener should call the callback only with the specified property', async () => {
+  expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
+  mockedResponse = 'o- /PATH/TO/TEST/NODE';
+
+  const cb1 = jest.fn();
+  const id1 = await noodle.PATH.TO.TEST.NODE.addListener(cb1, 'SignalPresent');
+  expect(receivedMessage).toBe(expectedMessage);
+
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
+  server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Something=false\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+  await waitLinesRcv(noodle.lw3client.connection, 5);
+
+  expect(cb1.mock.calls.length).toBe(2);
+  expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/TEST/NODE');
+  expect(cb1.mock.calls[0][1]).toBe('SignalPresent');
+  expect(cb1.mock.calls[0][2]).toBe(false);
+  expect(cb1.mock.calls[1][0]).toBe('/PATH/TO/TEST/NODE');
+  expect(cb1.mock.calls[1][1]).toBe('SignalPresent');
+  expect(cb1.mock.calls[1][2]).toBe(true);
+
+
+  expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
+  mockedResponse = 'c- /PATH/TO/TEST/NODE';
+  await noodle.PATH.TO.TEST.NODE.closeListener(id1);
+  expect(receivedMessage).toBe(expectedMessage);
+});
+
+test('addListener should call the callback only with the specified property and value', async () => {
+  expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
+  mockedResponse = 'o- /PATH/TO/TEST/NODE';
+
+  const cb1 = jest.fn();
+  const id1 = await noodle.PATH.TO.TEST.NODE.addListener(cb1, 'SignalPresent=false');
+  expect(receivedMessage).toBe(expectedMessage);
+
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
+  server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Something=false\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+  await waitLinesRcv(noodle.lw3client.connection, 5);
+
+  expect(cb1.mock.calls.length).toBe(1);
+  expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/TEST/NODE');
+  expect(cb1.mock.calls[0][1]).toBe('SignalPresent');
+  expect(cb1.mock.calls[0][2]).toBe(false);
+  
   expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
   mockedResponse = 'c- /PATH/TO/TEST/NODE';
   await noodle.PATH.TO.TEST.NODE.closeListener(id1);
