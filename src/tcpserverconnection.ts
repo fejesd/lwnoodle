@@ -86,12 +86,7 @@ export class TcpServerConnection extends EventEmitter {
       this.sockets[socketId].inputbuffer = messages[messages.length - 1];
       if (this.sockets[socketId].inputbuffer.length > 1e6) {
         this.sockets[socketId].inputbuffer = '';
-        this.emit(
-          'error',
-          new Error(
-            `Socket {$socketId} incoming buffer is full, no delimiter was received since 1MB of data. Data is dropped.`,
-          ),
-        );
+        this.emit('error', new Error(`Socket {$socketId} incoming buffer is full, no delimiter was received since 1MB of data. Data is dropped.`));
       }
     });
     this.emit('connect', socketId);
@@ -117,8 +112,7 @@ export class TcpServerConnection extends EventEmitter {
       debug(`#${socketId}> ${msg}`);
       if (!this.sockets[socketId].drained) debug(`Socket ${socketId} output buffer full`);
     } else {
-      if (this.sockets[socketId].outputbuffer.length < 1024)
-        this.sockets[socketId].outputbuffer.push(msg); // message delayed
+      if (this.sockets[socketId].outputbuffer.length < 1024) this.sockets[socketId].outputbuffer.push(msg); // message delayed
       else this.emit('error', socketId, new Error('Outgoing buffer is stalled, message has been dropped'));
     }
   }

@@ -103,10 +103,7 @@ export class TcpClientConnection extends ClientConnection {
     this.inputbuffer = messages[messages.length - 1];
     if (this.inputbuffer.length > 1e6) {
       this.inputbuffer = '';
-      this.emit(
-        'error',
-        new Error('Incoming buffer is full, no delimiter was received since 1MB of data. Data is dropped.'),
-      );
+      this.emit('error', new Error('Incoming buffer is full, no delimiter was received since 1MB of data. Data is dropped.'));
     }
   }
 

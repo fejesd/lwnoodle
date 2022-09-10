@@ -138,12 +138,7 @@ export class Lw3Client extends EventEmitter {
     });
   }
 
-  private cmdSend(
-    cmd: string,
-    callback?: (data: string[], info: any) => void,
-    callbackInfo?: any,
-    timeoutcb?: () => void,
-  ): void {
+  private cmdSend(cmd: string, callback?: (data: string[], info: any) => void, callbackInfo?: any, timeoutcb?: () => void): void {
     if (!this.connection.isConnected()) return;
     const signature = (this.signatureCounter + 0x10000).toString(16).substr(-4).toUpperCase();
     const data = signature + '#' + cmd + '\n';
@@ -306,8 +301,7 @@ export class Lw3Client extends EventEmitter {
       this.cmdSend(
         'CALL ' + property + '(' + param + ')',
         (data: string[], info: any) => {
-          if (data.length > 1)
-            return this.error('CALL response contains multiple lines: ' + JSON.stringify(data), reject);
+          if (data.length > 1) return this.error('CALL response contains multiple lines: ' + JSON.stringify(data), reject);
           else if (data.length === 0) return this.error('CALL response contains no data!', reject);
           if (!data.length) return this.error('Empty response to CALL', reject);
           const line = data[0];
@@ -339,8 +333,7 @@ export class Lw3Client extends EventEmitter {
       this.cmdSend(
         'GET ' + property,
         (data: string[], info: any) => {
-          if (data.length > 1)
-            return this.error('GET response contains multiple lines: ' + JSON.stringify(data), reject);
+          if (data.length > 1) return this.error('GET response contains multiple lines: ' + JSON.stringify(data), reject);
           else if (data.length === 0) return this.error('GET response contains no data!', reject);
           if (!data.length) return this.error('Empty response', reject);
           const line = data[0];
@@ -364,12 +357,7 @@ export class Lw3Client extends EventEmitter {
    * @param callback  callback function will notified about changes
    * @returns Promise rejects on failure. Promise return an ID number, which can be used for removing the watch entry later.
    */
-  OPEN(
-    path: string,
-    callback: (path: string, property: string, value: string) => void,
-    property: string = '',
-    value: string = '',
-  ): Promise<number> {
+  OPEN(path: string, callback: (path: string, property: string, value: string) => void, property: string = '', value: string = ''): Promise<number> {
     // todo sanity check
     if (path[path.length - 1] === '/') path = path.slice(0, -1);
     const alreadyOpen = _.findIndex(this.subscribers, { path }) !== -1;

@@ -8,13 +8,7 @@ import { EventEmitter } from 'node:events';
  * @param timeout
  * @returns
  */
-export async function waitForAnEvent(
-  obj: EventEmitter,
-  eventName: string,
-  debug: any,
-  count: number = 1,
-  timeout: number = 1000,
-): Promise<void> {
+export async function waitForAnEvent(obj: EventEmitter, eventName: string, debug: any, count: number = 1, timeout: number = 1000): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       obj.removeAllListeners(eventName);
