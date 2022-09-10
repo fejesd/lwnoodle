@@ -3,6 +3,7 @@ import { TcpServerConnection } from '../tcpserverconnection';
 import Debug from 'debug';
 import { sleep, waitForAnEvent } from './helpers';
 import { TcpClientConnection } from '../tcpclientconnection';
+import { extendWith } from 'lodash';
 const debug = Debug('Test');
 
 Debug.enable('TcpServerConnection,Test,Lw3Client');
@@ -82,6 +83,7 @@ test('GET', async () => {
 test('CALL', async () => {
   const testbenches = [
     ['/TEST/NODE:method', '', 'mO /TEST/NODE:method=All right', 'All right'],
+    ['/TEST/NODE:method', '', 'mO /TEST/NODE:method', ''],
     ['/TEST/NODE:method', 'Sample;Parameter', 'mO /TEST/NODE:method=All right', 'All right'],
     ['/TEST/NODE:method', 'Sample\nParameter', 'mO /TEST/NODE:method=All right', 'All right'],
     [
@@ -103,6 +105,7 @@ test('CALL', async () => {
       const test = await client.CALL(testbench[0] as string, testbench[1] as string);
       expect(test).toStrictEqual(testbench[3]);
     } catch (err) {
+      debug(err);      
       expect(testbench[3]).toBe(undefined);
       if (testbench[4]) expect((err as Error).toString()).toBe('Error: ' + testbench[4]);
     }

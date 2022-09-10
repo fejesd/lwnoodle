@@ -306,26 +306,16 @@ export class Lw3Client extends EventEmitter {
       this.cmdSend(
         'CALL ' + property + '(' + param + ')',
         (data: string[], info: any) => {
-          if (data.length > 1) {
-            this.error('GET response contains multiple lines: ' + JSON.stringify(data), reject);
-            return;
-          } else if (data.length === 0) {
-            this.error('GET response contains no data!', reject);
-            return;
-          }
-          if (!data.length) {
-            this.error('Empty response', reject);
-            return;
-          }
+          if (data.length > 1) return this.error('CALL response contains multiple lines: ' + JSON.stringify(data), reject);            
+          else if (data.length === 0) return this.error('CALL response contains no data!', reject);
+          if (!data.length) return this.error('Empty response to CALL', reject);
           const line = data[0];
-          if (!line.length) {
-            this.error('Empty response', reject);
-            return;
-          }
-          if (line.substring(0, 3) === 'mO ') resolve(line.substring(line.search('=') + 1, line.length));
-          else if (line.substring(0, 3) === 'mE ')
-            this.error(line.substring(data[0].search('=') + 1, line.length), reject);
-          else this.error('Malformed response: ' + data, reject);
+          if (!line.length) return this.error('Empty response', reject);
+          let eqpos = line.search('=');
+          if (eqpos === -1) eqpos = line.length;
+          if (line.substring(0, 3) === 'mE ') return this.error(line.substring(eqpos + 1, line.length), reject);
+          if (line.substring(0, 3) === 'mO ') resolve(line.substring(eqpos + 1, line.length));
+          else return this.error('Malformed response to CALL: ' + data, reject);
         },
         undefined,
         () => {
