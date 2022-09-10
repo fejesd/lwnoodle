@@ -16,33 +16,47 @@ interface NoodleClientParameters {
 
 class NoodleClientObject {
   /** name for this client */
-  name: string;
+  clientname: string;
   /** Path for this object. (it is empty if it is on root) */
   path: string[];
   /** Lw3 client object reference */
   lw3client: Lw3Client;
 
   constructor(name: string, path: string[], lw3client: Lw3Client) {
-    this.name = name;
+    this.clientname = name;
     this.path = path;
     this.lw3client = lw3client;
   }
 }
 
-const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
-  async apply(target: NoodleClientObject, ctx: string, args: any[]) {
+function obj2fun(object:object):()=>void {
+	// Converts the given dictionary into a function, thus we can create apply proxy around it
+  // you can use apply() on functions, that's why we should convert dictionaries to functions
+	const func = () => {/* */};
+    for(const prop in object){
+        if(object.hasOwnProperty(prop)){
+            func[prop as keyof typeof func] = object[prop as keyof object];
+        }
+    }
+    return func;
+}
+
+const NoodleProxyHandler: ProxyHandler<()=>void> = {
+  async apply(target: any, ctx: string, args: any[]) {
     const last = target.path[target.path.length - 1];
-    const path = '/' + target.path.slice(0, -1).join('/');
+    const path = '/' + target.path.slice(0, -1).join('/');    
     if (last === 'addListener') {
-      target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[2](cbpath, cbproperty, cbvalue), args[0]);
+      return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), args[1]);
+    } else if (last === 'closeListener') {
+        return target.lw3client.CLOSE(args[0]);
     } else if (last === 'once') {
-      target.lw3client.OPEN(
+      return target.lw3client.OPEN(
         path,
         (cbpath: string, cbproperty: string, cbvalue: string) => {
           // target.lw3client.removeListener(this);  // TODO
-          args[2](cbpath, cbproperty, cbvalue);
+          args[0](cbpath, cbproperty, cbvalue);
         },
-        args[0],
+        args[1],
       );
     } else if (last === 'waitFor') {
       return new Promise<string>((resolve, reject) => {
@@ -52,7 +66,7 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
             // target.lw3client.removeListener(this); // TODO
             resolve(cbvalue);
           },
-          args[0],
+          args[1],
         );
       });
     } else {
@@ -61,7 +75,7 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
     }
   },
 
-  get(target: NoodleClientObject, key: string): any {
+  get(target: any, key: string): any {
     if (key in target) return target[key as keyof typeof target]; // make target fields accessible. Is this needed?
     if (key === '__close__')
       return () => {
@@ -74,7 +88,7 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
     if ((isNode || isMethod) && !castedToProperty) {
       key = key.replace('__method__', '').replace('__node__', '');
       const node = new NoodleClientObject(target.name, target.path.slice().concat(key), target.lw3client);
-      return new Proxy(node, NoodleProxyHandler);
+      return new Proxy(obj2fun(node), NoodleProxyHandler);
     } else {
       key = key.replace('__prop__', '');
       const path = '/' + target.path.join('/');
@@ -83,7 +97,7 @@ const NoodleProxyHandler: ProxyHandler<NoodleClientObject> = {
     }
   },
 
-  set(target: NoodleClientObject, key: string, value: string): boolean {
+  set(target: any, key: string, value: string): boolean {
     key = key.replace('__prop__', '');
     // unfortunately ProxyHandler.set should return immediately with a boolean, there is no way to make it async
     // therefore we will catch the rejections from lw3client.SET here and drop them. __sync__() call should be used after set if error detection is important.
@@ -108,5 +122,5 @@ export const Noodle = (options: NoodleClientParameters = {}): any => {
     new Lw3Client(new TcpClientConnection(options.host, options.port), options.waitresponses),
   );
   debug('Noodle created');
-  return new Proxy(clientObj, NoodleProxyHandler);
+  return new Proxy(obj2fun(clientObj), NoodleProxyHandler);
 };

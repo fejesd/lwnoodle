@@ -25,7 +25,7 @@ beforeAll(async () => {
   });
 });
 
-afterAll(async () => {
+afterAll(async () => {  
   noodle.__close__();
   await waitForAnEvent(noodle.lw3client, 'close', debug);
   server.close();
@@ -140,9 +140,55 @@ test('sync should fail when no response is get for SET', async () => {
   noodle.NODE.TEST.Property = 'hello\tworld';
   try {
     await noodle.__sync__();
-    fail('no exception');
+    throw new Error('no exception');
   } catch (errormsg) {
     debug(errormsg);
   }
+  expect(receivedMessage).toBe(expectedMessage);
+});
+
+test('method call should return with the answer', async() =>{
+  expectedMessage = 'CALL /PATH/TO/TEST/NODE:test(true,false)';
+  mockedResponse = 'mO /PATH/TO/TEST/NODE:test=answer';
+
+  const answer = await noodle.PATH.TO.TEST.NODE.test(true,false);
+  expect(receivedMessage).toBe(expectedMessage);
+  expect(answer).toBe('answer');
+});
+
+test('method call should return empty string when there is no return value', async() =>{
+  expectedMessage = 'CALL /PATH/TO/TEST/NODE:test(1,2,3)';
+  mockedResponse = 'mO /PATH/TO/TEST/NODE:test';
+
+  const answer = await noodle.PATH.TO.TEST.NODE.test(1,2,3);
+  expect(receivedMessage).toBe(expectedMessage);
+  expect(answer).toBe('');
+});
+
+test('method call should raise an exception when error has returned', async() =>{
+  expectedMessage = 'CALL /PATH/TO/TEST/NODE:test(true,false)';
+  mockedResponse = 'mE /PATH/TO/TEST/NODE:test=answer';  
+  await expect(noodle.PATH.TO.TEST.NODE.test(true,false)).rejects.toEqual(Error('answer'));
+  expect(receivedMessage).toBe(expectedMessage);
+});
+
+test('method call should raise an exception when junk returned', async() =>{
+  expectedMessage = 'CALL /PATH/TO/TEST/NODE:test(true,false)';
+  mockedResponse = 'junk';  
+  await expect(noodle.PATH.TO.TEST.NODE.test(true,false)).rejects.toBeDefined();
+  expect(receivedMessage).toBe(expectedMessage);
+});
+
+test('addListener should call the callback when needed', async() =>{
+  expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
+  mockedResponse = 'o- /PATH/TO/TEST/NODE';
+
+  const cb1 = jest.fn();
+  const id1 = await noodle.PATH.TO.TEST.NODE.addListener(cb1);
+  expect(receivedMessage).toBe(expectedMessage);
+
+  expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
+  mockedResponse = 'c- /PATH/TO/TEST/NODE';
+  await noodle.PATH.TO.TEST.NODE.closeListener(id1);
   expect(receivedMessage).toBe(expectedMessage);
 });
