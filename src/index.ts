@@ -55,7 +55,7 @@ const NoodleProxyHandler: ProxyHandler<() => void> = {
       return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), args[1], 1);
     } else if (last === 'waitFor') {
       return new Promise<string>((resolve, reject) => {
-        target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => resolve(cbvalue), args[1], 1);
+        target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => resolve(cbvalue), args[0], 1);
       });
     } else {
       // method invocation
