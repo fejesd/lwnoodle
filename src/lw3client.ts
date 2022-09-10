@@ -306,7 +306,8 @@ export class Lw3Client extends EventEmitter {
       this.cmdSend(
         'CALL ' + property + '(' + param + ')',
         (data: string[], info: any) => {
-          if (data.length > 1) return this.error('CALL response contains multiple lines: ' + JSON.stringify(data), reject);            
+          if (data.length > 1)
+            return this.error('CALL response contains multiple lines: ' + JSON.stringify(data), reject);
           else if (data.length === 0) return this.error('CALL response contains no data!', reject);
           if (!data.length) return this.error('Empty response to CALL', reject);
           const line = data[0];

@@ -105,7 +105,7 @@ test('CALL', async () => {
       const test = await client.CALL(testbench[0] as string, testbench[1] as string);
       expect(test).toStrictEqual(testbench[3]);
     } catch (err) {
-      debug(err);      
+      debug(err);
       expect(testbench[3]).toBe(undefined);
       if (testbench[4]) expect((err as Error).toString()).toBe('Error: ' + testbench[4]);
     }
@@ -132,21 +132,21 @@ test('SET', async () => {
 test('multiple OPEN and CLOSE, handling subscription list', async () => {
   expectedMessage = 'OPEN /TEST/A';
   mockedResponse = 'o- /TEST/A';
-  let cb1 = jest.fn();
-  let id1 = await client.OPEN('/TEST/A', cb1);
+  const cb1 = jest.fn();
+  const id1 = await client.OPEN('/TEST/A', cb1);
 
   expectedMessage = '';
-  let cb2 = jest.fn();
-  let id2 = await client.OPEN('/TEST/A', cb2);
+  const cb2 = jest.fn();
+  const id2 = await client.OPEN('/TEST/A', cb2);
 
-  let cb3 = jest.fn();
-  let id3 = await client.OPEN('/TEST/A', cb2, 'testprop', 'testval');
+  const cb3 = jest.fn();
+  const id3 = await client.OPEN('/TEST/A', cb2, 'testprop', 'testval');
 
   expectedMessage = 'OPEN /TEST/B';
   mockedResponse = 'o- /TEST/B';
 
-  let cb4 = jest.fn();
-  let id4 = await client.OPEN('/TEST/B', cb2, 'testprop', 'testval');
+  const cb4 = jest.fn();
+  const id4 = await client.OPEN('/TEST/B', cb2, 'testprop', 'testval');
 
   expect(client['subscribers'].length).toBe(4);
 
@@ -171,10 +171,10 @@ test('multiple OPEN and CLOSE, handling subscription list', async () => {
 test('callback is called when CHG was received on an opened node', async () => {
   expectedMessage = 'OPEN /TEST/A';
   mockedResponse = 'o- /TEST/A';
-  let cb1 = jest.fn();
-  let cb2 = jest.fn();
-  let id1 = await client.OPEN('/TEST/A', cb1);
-  let id2 = await client.OPEN('/TEST/A', cb2);
+  const cb1 = jest.fn();
+  const cb2 = jest.fn();
+  const id1 = await client.OPEN('/TEST/A', cb1);
+  const id2 = await client.OPEN('/TEST/A', cb2);
 
   server.write(-1, 'CHG /TEST/B.test1=somevalue\r\n');
   server.write(-1, 'CHG /TEST/A.test2=someothervalue\r\n');
@@ -202,5 +202,4 @@ test('callback is called when CHG was received on an opened node', async () => {
   mockedResponse = 'c- /TEST/A';
   await client.CLOSE(id1);
   await client.CLOSE(id2);
-
 });
