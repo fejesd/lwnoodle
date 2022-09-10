@@ -18,6 +18,7 @@ interface SubscriberEntry {
   value: string;
   callback: (path: string, property: string, value: any) => void;
   subscriptionId: number;
+  count: number;
 }
 
 interface SyncPromise {
@@ -226,15 +227,21 @@ export class Lw3Client extends EventEmitter {
     const propname = proppath.substring(proppath.indexOf('.') + 1, proppath.length);
     const value = Lw3Client.unescape(data.substring(eq + 1, data.length));
     // notify subscribers
+    const subscriptionsToClose:number[] = [];
     this.subscribers.forEach((i) => {
       if (i.path === nodepath) {
         if (i.property === '*' || i.property === '' || i.property === propname) {
           if (i.value === '' || i.value === value) {
             i.callback(nodepath, propname, Lw3Client.convertValue(value));
+            if (i.count !== -1) {
+              i.count--;
+              if (!i.count) subscriptionsToClose.push(i.subscriptionId);
+            }
           }
         }
       }
     });
+    subscriptionsToClose.forEach((x:number)=>this.CLOSE(x));
   }
 
   /* Called when a new block (in {...} parenthesis) has been arrived with a signature*/
@@ -354,9 +361,10 @@ export class Lw3Client extends EventEmitter {
    * @param path      path to the node
    * @param callback  callback function will notified about changes
    * @param rule  optional. you can watch property and also a value if you like. Examples: SignalPresent,  SignalPresent=false, ...
+   * @param count optional. After calling the callback count times, the subscription will be closed automatically
    * @returns Promise rejects on failure. Promise return an ID number, which can be used for removing the watch entry later.
    */
-  OPEN(path: string, callback: (path: string, property: string, value: string) => void, rule: string = ''): Promise<number> {
+  OPEN(path: string, callback: (path: string, property: string, value: string) => void, rule: string = '', count=-1): Promise<number> {
     // todo sanity check
     if (path[path.length - 1] === '/') path = path.slice(0, -1);
     const alreadyOpen = _.findIndex(this.subscribers, { path }) !== -1;
@@ -375,12 +383,12 @@ export class Lw3Client extends EventEmitter {
             reject();
             return;
           }
-          this.subscribers.push({ path, property, value, callback, subscriptionId: this.subscriptionCounter });
+          this.subscribers.push({ path, property, value, callback, subscriptionId: this.subscriptionCounter, count });
           resolve(this.subscriptionCounter++);
         });
       } else {
         debug(`${path} is already opened`);
-        this.subscribers.push({ path, property, value, callback, subscriptionId: this.subscriptionCounter });
+        this.subscribers.push({ path, property, value, callback, subscriptionId: this.subscriptionCounter, count });
         resolve(this.subscriptionCounter++);
       }
     });
@@ -388,13 +396,19 @@ export class Lw3Client extends EventEmitter {
 
   /**
    * Closes a subscription by ID
-   * @param subscriptionId The ID of the subscription (returned by OPEN call)
+   * @param subscriptionId The ID of the subscription (returned by OPEN call) or the callback function
    * @returns
    */
 
-  CLOSE(subscriptionId: number): Promise<void> {
+  CLOSE(subscriptionId: any): Promise<void> {
     return new Promise((resolve, reject) => {
-      const subscriptionIndex = _.findIndex(this.subscribers, { subscriptionId });
+      let subscriptionIndex = -1;
+      debug(JSON.stringify(subscriptionId));
+      if (typeof(subscriptionId) === 'number')
+          subscriptionIndex = _.findIndex(this.subscribers, { subscriptionId:subscriptionId as number });
+      else if (typeof(subscriptionId) === 'function') {
+          subscriptionIndex = _.findIndex(this.subscribers, { callback: subscriptionId as (path: string, property: string, value: any) => void });                  
+      }
       if (subscriptionIndex === -1) {
         reject();
         return;

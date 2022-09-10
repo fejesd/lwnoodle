@@ -30,7 +30,7 @@ export function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export function waitLinesRcv(c:ClientConnection, cnt:number): Promise<void> {
+export function waitLinesRcv(c: ClientConnection, cnt: number): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     let n = 0;
     const handler = () => {

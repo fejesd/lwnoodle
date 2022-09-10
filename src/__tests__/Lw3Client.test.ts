@@ -175,7 +175,7 @@ test('callback is called when CHG was received on an opened node', async () => {
   server.write(-1, 'CHG /TEST/C.test1=somevalue\r\n');
   server.write(-1, 'CHG /TEST/A.test3=somethirdvalue\r\n');
   await waitLinesRcv(client.connection, 4);
-  
+
   expect(cb1.mock.calls.length).toBe(2);
   expect(cb1.mock.calls[0][0]).toBe('/TEST/A');
   expect(cb1.mock.calls[0][1]).toBe('test2');
@@ -230,7 +230,7 @@ test('callback is called only when CHG was received on an opened node with a spe
   server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
   server.write(-1, 'CHG /TEST/A.SignalPresent2=2\r\n');
   await waitLinesRcv(client.connection, 4);
-  
+
   expect(cb1.mock.calls.length).toBe(1);
   expect(cb1.mock.calls[0][0]).toBe('/TEST/A');
   expect(cb1.mock.calls[0][1]).toBe('SignalPresent');

@@ -218,7 +218,6 @@ test('addListener should call the callback when needed', async () => {
   expect(cb1.mock.calls[1][1]).toBe('SignalPresent');
   expect(cb1.mock.calls[1][2]).toBe(true);
 
-
   expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
   mockedResponse = 'c- /PATH/TO/TEST/NODE';
   await noodle.PATH.TO.TEST.NODE.closeListener(id1);
@@ -248,7 +247,6 @@ test('addListener should call the callback only with the specified property', as
   expect(cb1.mock.calls[1][1]).toBe('SignalPresent');
   expect(cb1.mock.calls[1][2]).toBe(true);
 
-
   expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
   mockedResponse = 'c- /PATH/TO/TEST/NODE';
   await noodle.PATH.TO.TEST.NODE.closeListener(id1);
@@ -274,9 +272,66 @@ test('addListener should call the callback only with the specified property and 
   expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/TEST/NODE');
   expect(cb1.mock.calls[0][1]).toBe('SignalPresent');
   expect(cb1.mock.calls[0][2]).toBe(false);
-  
+
   expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
   mockedResponse = 'c- /PATH/TO/TEST/NODE';
   await noodle.PATH.TO.TEST.NODE.closeListener(id1);
   expect(receivedMessage).toBe(expectedMessage);
 });
+
+test('once should call the callback only once', async () => {
+  expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
+  mockedResponse = 'o- /PATH/TO/TEST/NODE';
+
+  const cb1 = jest.fn();
+  const id1 = await noodle.PATH.TO.TEST.NODE.once(cb1, 'SignalPresent=false');
+  expect(receivedMessage).toBe(expectedMessage);
+
+  expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
+  mockedResponse = 'c- /PATH/TO/TEST/NODE';
+
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+  await waitLinesRcv(noodle.lw3client.connection, 3);
+
+  expect(cb1.mock.calls.length).toBe(1);
+  expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/TEST/NODE');
+  expect(cb1.mock.calls[0][1]).toBe('SignalPresent');
+  expect(cb1.mock.calls[0][2]).toBe(false);
+  await waitLinesRcv(noodle.lw3client.connection, 3);
+  expect(receivedMessage).toBe(expectedMessage);
+  expect(noodle.lw3client['subscribers'].length).toBe(0);
+});
+
+test('multiple once on same node', async () => {
+  expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
+  mockedResponse = 'o- /PATH/TO/TEST/NODE';
+
+  const cb1 = jest.fn();
+  const cb2 = jest.fn();
+  await noodle.PATH.TO.TEST.NODE.once(cb1, 'SignalPresent=false');
+  await noodle.PATH.TO.TEST.NODE.once(cb2, 'SignalPresent=true');
+  expect(receivedMessage).toBe(expectedMessage);
+
+  expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
+  mockedResponse = 'c- /PATH/TO/TEST/NODE';
+
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+  await waitLinesRcv(noodle.lw3client.connection, 3); 
+  expect(cb1.mock.calls.length).toBe(1);
+  expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/TEST/NODE');
+  expect(cb1.mock.calls[0][1]).toBe('SignalPresent');
+  expect(cb1.mock.calls[0][2]).toBe(false);
+  expect(cb2.mock.calls.length).toBe(1);
+  expect(cb2.mock.calls[0][0]).toBe('/PATH/TO/TEST/NODE');
+  expect(cb2.mock.calls[0][1]).toBe('SignalPresent');
+  expect(cb2.mock.calls[0][2]).toBe(true);
+
+  await waitLinesRcv(noodle.lw3client.connection, 3);
+  expect(receivedMessage).toBe(expectedMessage);
+  expect(noodle.lw3client['subscribers'].length).toBe(0);
+});
+

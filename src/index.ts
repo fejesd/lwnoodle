@@ -51,21 +51,14 @@ const NoodleProxyHandler: ProxyHandler<() => void> = {
       return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), args[1]);
     } else if (last === 'closeListener') {
       return target.lw3client.CLOSE(args[0]);
-    } else if (last === 'once') {
-      return target.lw3client.OPEN(
-        path,
-        (cbpath: string, cbproperty: string, cbvalue: string) => {
-          // target.lw3client.removeListener(this);  // TODO
-          args[0](cbpath, cbproperty, cbvalue);
-        },
-        args[1],
-      );
+    } else if (last === 'once') {      
+      return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), args[1], 1);
     } else if (last === 'waitFor') {
       return new Promise<string>((resolve, reject) => {
         target.lw3client.OPEN(
           path,
           (cbpath: string, cbproperty: string, cbvalue: string) => {
-            // target.lw3client.removeListener(this); // TODO
+            target.lw3client.removeListener(this); 
             resolve(cbvalue);
           },
           args[1],
