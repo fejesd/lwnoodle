@@ -5,6 +5,10 @@ import * as _ from 'lodash';
 
 const debug = Debug('Lw3Client');
 
+/**
+ * WaitListItem stores a signature and callback information. Lw3Client::waitList store a list of WaitListItems, 
+ * timeouts and callbacks are handled through this list.
+ */
 interface WaitListItem {
   signature: string;
   callback: ((cb: string[], info: any) => void) | undefined;
@@ -12,6 +16,12 @@ interface WaitListItem {
   timeoutcb?: () => void;
 }
 
+/**
+ * If somebody watch a node (optionally just for a specific property, optionally for a specific values) then a SubscriberEntry 
+ * will be pushed into Lw3Client::subscribers.
+ * subscriptionId is an unique id used for delete the subscription. Count is optional, if greater than zero, subscription will be 
+ * deleted after count times calling the callback.
+ */
 interface SubscriberEntry {
   path: string;
   property: string;
@@ -21,11 +31,19 @@ interface SubscriberEntry {
   count: number;
 }
 
+/**
+ * Lw3client::sync() method will return a promise which will be resolved when every task is done. Lw3Client.syncPromises hold a list of
+ * SyncPromise objects which store the resolve and rejects functions.
+ */
 interface SyncPromise {
   resolve: () => void;
   reject: (msg: string) => void;
 }
 
+/**
+ * Lw3Client class is not intended for external use, you should use only the proxy objects. However if you like, you have
+ * access it through noodle_obj.lw3client
+ */
 export class Lw3Client extends EventEmitter {
   connection: ClientConnection;
   waitResponses: boolean;

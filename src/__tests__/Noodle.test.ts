@@ -339,39 +339,6 @@ test('multiple once on same node', async () => {
   expect(noodle.lw3client['subscribers'].length).toBe(0);
 });
 
-//
-// waitFor
-//
-/*
-test('waitFor should fullfill when needed', async () => {
-  expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
-  mockedResponse = 'o- /PATH/TO/TEST/NODE';
-
-  const cb1 = jest.fn();
-
-  noodle.PATH.TO.TEST.NODE.waitFor('SignalPresent=false').then(cb1);
-
-  await waitLinesRcv(noodle.lw3client.connection, 3);
-  expect(receivedMessage).toBe(expectedMessage);
-
-  expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
-  mockedResponse = 'c- /PATH/TO/TEST/NODE';
-
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
-  await waitLinesRcv(noodle.lw3client.connection, 2);
-  expect(cb1.mock.calls.length).toBe(0);
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
-  await waitLinesRcv(noodle.lw3client.connection, 1);
-  expect(cb1.mock.calls.length).toBe(1);
-  expect(cb1.mock.calls[0][0]).toBe(false);
-
-  await waitLinesRcv(noodle.lw3client.connection, 3);
-  expect(receivedMessage).toBe(expectedMessage);
-  expect(noodle.lw3client['subscribers'].length).toBe(1);
-});
-*/
-
 test('waitFor usage', async () => {
   expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
   mockedResponse = 'o- /PATH/TO/TEST/NODE';
