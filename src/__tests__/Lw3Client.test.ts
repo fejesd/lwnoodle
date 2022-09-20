@@ -12,6 +12,7 @@ let server: TcpServerConnection;
 let client: Lw3Client;
 let expectedMessage: string;
 let mockedResponse: string;
+let receivedMessage: string;
 
 beforeAll(async () => {
   server = new TcpServerConnection(6107);
@@ -20,6 +21,7 @@ beforeAll(async () => {
   await waitForAnEvent(client, 'connect', debug);
   server.on('frame', (id, data) => {
     const parts = data.split('#');
+    receivedMessage = parts[1];
     expect(parts[1]).toBe(expectedMessage);
     if (mockedResponse.length) server.write(id, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
   });
@@ -54,7 +56,7 @@ test('escaping and unescaping', () => {
   }
 });
 
-test('GET', async () => {
+test('GET should perform the lw3 command and return with the result', async () => {
   const testbenches = [
     ['/TEST/NODE.property', 'pr /TEST/NODE.property=test\\nvalue', 'test\nvalue'],
     ['/TEST/NODE.property', 'pw /TEST/NODE.property=test\\tvalue', 'test\tvalue'],
@@ -78,6 +80,47 @@ test('GET', async () => {
       expect(testbench[2]).toBe(undefined);
     }
   }
+});
+
+test('GET should return with the cached properties immediately', async () => {
+  expectedMessage = 'OPEN /TEST/NODE';
+  mockedResponse = 'o- /TEST/NODE';
+  const tid = await client.OPEN('/TEST/NODE', (path, property, value) => {
+    /* */
+  });
+  expect(receivedMessage).toBe(expectedMessage);
+
+  server.write(-1, 'CHG /TEST/NODE.test1=some\\nvalue\r\n');
+  server.write(-1, 'CHG /TEST/NODE.SignalPresent=true\r\n');
+  server.write(-1, 'CHG /TEST/NODE.SignalPresent2=2\r\n');
+  await waitLinesRcv(client.connection, 3);
+
+  // test for cache hits
+  expect(await client.GET('/TEST/NODE.test1')).toBe('some\nvalue');
+  expect(await client.GET('/TEST/NODE.SignalPresent')).toBe(true);
+  expect(await client.GET('/TEST/NODE.SignalPresent2')).toBe(2);
+
+  // test for cache miss
+
+  expectedMessage = 'GET /TEST/NODE.uncached';
+  mockedResponse = 'pr /TEST/NODE.uncached=great';
+  expect(await client.GET('/TEST/NODE.uncached')).toBe('great');
+
+  // test for cached GETted property hit
+  expectedMessage = '';
+  mockedResponse = '';
+  expect(await client.GET('/TEST/NODE.uncached')).toBe('great');
+
+  // close node
+  expectedMessage = 'CLOSE /TEST/NODE';
+  mockedResponse = 'c- /TEST/NODE';
+  await client.CLOSE(tid);
+  expect(receivedMessage).toBe(expectedMessage);
+
+  // test for invalidated cache after close
+  expectedMessage = 'GET /TEST/NODE.uncached';
+  mockedResponse = 'pr /TEST/NODE.uncached=question';
+  expect(await client.GET('/TEST/NODE.uncached')).toBe('question');
 });
 
 test('CALL', async () => {

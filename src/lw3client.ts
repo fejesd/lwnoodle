@@ -6,7 +6,7 @@ import * as _ from 'lodash';
 const debug = Debug('Lw3Client');
 
 /**
- * WaitListItem stores a signature and callback information. Lw3Client::waitList store a list of WaitListItems, 
+ * WaitListItem stores a signature and callback information. Lw3Client::waitList store a list of WaitListItems,
  * timeouts and callbacks are handled through this list.
  */
 interface WaitListItem {
@@ -17,9 +17,9 @@ interface WaitListItem {
 }
 
 /**
- * If somebody watch a node (optionally just for a specific property, optionally for a specific values) then a SubscriberEntry 
+ * If somebody watch a node (optionally just for a specific property, optionally for a specific values) then a SubscriberEntry
  * will be pushed into Lw3Client::subscribers.
- * subscriptionId is an unique id used for delete the subscription. Count is optional, if greater than zero, subscription will be 
+ * subscriptionId is an unique id used for delete the subscription. Count is optional, if greater than zero, subscription will be
  * deleted after count times calling the callback.
  */
 interface SubscriberEntry {
@@ -56,6 +56,7 @@ export class Lw3Client extends EventEmitter {
   signature: string; /* signature of currently received block */
   cmdToSend: string[]; /* Outgoing message FIFO */
   syncPromises: SyncPromise[]; /* List of promise resolve functions that shall be fulfilled when there are no more tasks */
+  cache: { [path: string]: { [property: string]: string } };
 
   /* Helper function, convert common values to appropriate JavaScript types. (integer / boolean / list) */
   static convertValue(value: string) {
@@ -124,6 +125,7 @@ export class Lw3Client extends EventEmitter {
     this.cmdToSend = [];
     this.signature = '';
     this.syncPromises = [];
+    this.cache = {};
     connection.on('error', this.socketError.bind(this));
     connection.on('close', this.socketClosed.bind(this));
     connection.on('connect', this.socketConnected.bind(this));
@@ -148,6 +150,7 @@ export class Lw3Client extends EventEmitter {
     this.isInBlock = false;
     this.block = [];
     this.cmdToSend = [];
+    this.cache = {};
     const subscribed: string[] = [];
     this.subscribers.forEach((i: any) => {
       if (subscribed.indexOf(i.path) === -1) {
@@ -244,6 +247,13 @@ export class Lw3Client extends EventEmitter {
     const nodepath = proppath.substring(0, proppath.indexOf('.'));
     const propname = proppath.substring(proppath.indexOf('.') + 1, proppath.length);
     const value = Lw3Client.unescape(data.substring(eq + 1, data.length));
+    // update cache
+    const nodecache = this.cache[nodepath];
+    if (nodecache) nodecache[propname] = value;
+    else {
+      debug('This should not happen - CHG to an unopened node?');
+      this.cache[nodepath] = { [propname]: value }; // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Object_initializer#computed_property_names
+    }
     // notify subscribers
     const subscriptionsToClose: number[] = [];
     this.subscribers.forEach((i) => {
@@ -355,9 +365,23 @@ export class Lw3Client extends EventEmitter {
     const pathParts = property.split('.');
     return new Promise((resolve, reject) => {
       if (pathParts.length !== 2) return this.error(`Getting invalid property: ${property}`, reject);
+      {
+        // check cache
+        const nodeCache = this.cache[pathParts[0]];
+        if (nodeCache) {
+          // this node has cached entries
+          const propCache = nodeCache[pathParts[1]];
+          if (propCache) {
+            // cache hit. Return with the cached value immediatately
+            debug(`Cache hit for ${pathParts[0]}.${pathParts[1]}`);
+            resolve(Lw3Client.convertValue(propCache));
+            return;
+          }
+        }
+      }
       this.cmdSend(
         'GET ' + property,
-        (data: string[], info: any) => {
+        (data: string[], pathPartsCb: any) => {
           if (data.length > 1) return this.error('GET response contains multiple lines: ' + JSON.stringify(data), reject);
           else if (data.length === 0) return this.error('GET response contains no data!', reject);
           if (!data.length) return this.error('Empty response', reject);
@@ -366,9 +390,14 @@ export class Lw3Client extends EventEmitter {
           if (line.charAt(0) !== 'p') return this.error('GET response contains no property... ' + line, reject);
           const n = line.indexOf('=');
           if (n === -1) return this.error('Malformed GET response: ' + line, reject);
-          resolve(Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length))));
+          const value = Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length)));
+          // if this node is cached, store the property into the cache
+          const nodeCache = this.cache[pathPartsCb[0]];
+          if (nodeCache) nodeCache[pathPartsCb[1]] = value;
+          // resolve
+          resolve(value);
         },
-        undefined,
+        pathParts,
         () => this.error('no answer, timeout', reject),
       );
     });
@@ -402,6 +431,7 @@ export class Lw3Client extends EventEmitter {
             return;
           }
           this.subscribers.push({ path, property, value, callback, subscriptionId: this.subscriptionCounter, count });
+          if (!this.cache[path]) this.cache[path] = {};
           resolve(this.subscriptionCounter++);
         });
       } else {
@@ -440,6 +470,7 @@ export class Lw3Client extends EventEmitter {
             reject();
             return;
           }
+          delete this.cache[path]; // node is closed now, we should invalidate all properties in the cache
           resolve();
         });
       } else {
