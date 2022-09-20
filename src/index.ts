@@ -3,6 +3,15 @@ import { TcpClientConnection } from './tcpclientconnection';
 import Debug from 'debug';
 const debug = Debug('Noodle');
 
+export interface Noodle {
+  ():any;  
+  [name: string]: Noodle |(()=>void)|Promise<void>|Lw3Client|string[]|string;
+  __close__():void;
+  path:string[];
+  sync:Promise<void>;
+  lw3client:Lw3Client;  
+}
+
 interface NoodleClientParameters {
   /** Ip address or host. Default is 127.0.0.1 */
   host?: string;
@@ -43,8 +52,8 @@ function obj2fun(object: object): () => void {
   return func;
 }
 
-const NoodleProxyHandler: ProxyHandler<() => void> = {
-  async apply(target: any, ctx: string, args: any[]) {
+const NoodleProxyHandler: ProxyHandler<Noodle> = {
+  async apply(target: Noodle, ctx: string, args: any[]) {
     const last = target.path[target.path.length - 1];
     const path = '/' + target.path.slice(0, -1).join('/');
     if (last === 'addListener') {
@@ -63,7 +72,7 @@ const NoodleProxyHandler: ProxyHandler<() => void> = {
     }
   },
 
-  get(target: any, key: string): any {
+  get(target: Noodle, key: string): any {
     if (key in target) return target[key as keyof typeof target]; // make target fields accessible. Is this needed?
     if (key === '__close__')
       return () => {
@@ -85,7 +94,7 @@ const NoodleProxyHandler: ProxyHandler<() => void> = {
     }
   },
 
-  set(target: any, key: string, value: string): boolean {
+  set(target: Noodle, key: string, value: string): boolean {
     key = key.replace('__prop__', '');
     // unfortunately ProxyHandler.set should return immediately with a boolean, there is no way to make it async
     // therefore we will catch the rejections from lw3client.SET here and drop them. __sync__() call should be used after set if error detection is important.
@@ -100,7 +109,7 @@ const NoodleProxyHandler: ProxyHandler<() => void> = {
   },
 };
 
-export const Noodle = (options: NoodleClientParameters = {}): any => {
+export const NoodleClient = (options: NoodleClientParameters = {}):Noodle => {
   options.host = options.host || 'localhost';
   options.port = options.port || 6107;
   options.waitresponses = options.waitresponses || false;
@@ -110,5 +119,39 @@ export const Noodle = (options: NoodleClientParameters = {}): any => {
     new Lw3Client(new TcpClientConnection(options.host, options.port), options.waitresponses),
   );
   debug('Noodle created');
-  return new Proxy(obj2fun(clientObj), NoodleProxyHandler);
+  return (new Proxy(obj2fun(clientObj), NoodleProxyHandler)) as Noodle;
 };
+
+interface LiveObject {
+  ():any;  
+  node: Noodle;
+  subscriptionId:number;
+  cache:{[path:string]:string}
+}
+
+const LiveObjProxyHandler: ProxyHandler<LiveObject> = {
+  get(target: LiveObject, key: string): any {    
+    return target.cache[key];
+  },
+
+  set(target: LiveObject, key: string, value: string): boolean {
+    target.node[key] = value;
+    return true;
+  }  
+}
+
+export const live = async (node: Noodle) => {
+  const liveObj:LiveObject = Object.assign(()=>{/* */}, {
+    node,
+    cache: {},
+    subscriptionId: 0
+  });    
+  const updater = ((obj:LiveObject):((path:string,property:string,value:string)=>void) => { 
+    return (path:string,property:string,value:string):void => {
+      obj.cache[property] = value; 
+    }
+  })(liveObj);
+  liveObj.subscriptionId = await node.lw3client.OPEN('/'+node.path.join('/'), updater);
+  await node.lw3client.FETCHALL('/'+node.path.join('/'), updater);
+  return new Proxy(obj2fun(liveObj), LiveObjProxyHandler);
+}

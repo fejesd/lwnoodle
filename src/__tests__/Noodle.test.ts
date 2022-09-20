@@ -1,4 +1,4 @@
-import { Noodle } from '../index';
+import { Noodle, NoodleClient, live } from '../index';
 import { sleep, waitForAnEvent, waitLinesRcv } from './helpers';
 import { TcpServerConnection } from '../tcpserverconnection';
 import Debug from 'debug';
@@ -15,7 +15,7 @@ let noodle: any;
 beforeAll(async () => {
   server = new TcpServerConnection(6107);
   await waitForAnEvent(server, 'listening', debug);
-  noodle = Noodle();
+  noodle = NoodleClient();
   await waitForAnEvent(noodle.lw3client, 'connect', debug);
   server.on('frame', (id, data) => {
     const parts = data.split('#');
@@ -26,7 +26,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  noodle.__close__();
+  noodle.__close__();  
   await waitForAnEvent(noodle.lw3client, 'close', debug);
   server.close();
   debug('wait server to close');
@@ -360,4 +360,34 @@ test('waitFor usage', async () => {
   await waitLinesRcv(noodle.lw3client.connection, 3);
   expect(receivedMessage).toBe(expectedMessage);
   expect(noodle.lw3client['subscribers'].length).toBe(0);
+});
+
+//
+// live
+//
+
+test('live should return immediately', async()=>{
+
+  expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
+  mockedResponse = 'o- /PATH/TO/TEST/NODE';
+  server.once('frame',(data)=>{
+    expectedMessage = 'GET /PATH/TO/TEST/NODE.*';
+    mockedResponse = 'pr /PATH/TO/TEST/NODE.Test=ablak\npr /PATH/TO/TEST/NODE.Hello=hello\\nworld\npr /PATH/TO/TEST/NODE.Counter=12';
+  });
+
+  const testnode:any = await live(noodle.PATH.TO.TEST.NODE);
+
+  expect(testnode.Test).toBe('ablak');
+  expect(testnode.Hello).toBe('hello\nworld');
+  expect(testnode.Counter).toBe(12);
+  expect(testnode.Foo).toBe(undefined);
+  
+  // send some update
+  server.write(-1, 'CHG /TEST/A.test1=somevalue\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Counter=13\r\n');
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');  
+  await waitLinesRcv(noodle.lw3client.connection, 3);
+
+  expect(testnode.Counter).toBe(13);
+  expect(testnode.SignalPresent).toBe(true);
 });

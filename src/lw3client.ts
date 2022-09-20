@@ -404,6 +404,36 @@ export class Lw3Client extends EventEmitter {
   }
 
   /**
+   * Will fetch all property of a node and store in the cache
+   * @param path 
+   */
+  FETCHALL(path: string, callback:(path:string, property:string, value:string)=>void):Promise<void> {    
+    return new Promise((resolve, reject) => {    
+      this.cmdSend(
+        'GET ' + path + '.*',
+        (data: string[], pathCb: any) => {
+          data.forEach((dline:string)=>{
+            if (dline.charAt(0) === 'p') {
+              const n = dline.indexOf('=');
+              const p = dline.indexOf('.');
+              if (n === -1) return this.error('Malformed GET response: ' + dline, reject);
+              const value = Lw3Client.convertValue(Lw3Client.unescape(dline.substring(n + 1, dline.length)));
+              const nodeCache = this.cache[pathCb];
+              const property = dline.substring(p + 1, n);
+              if (nodeCache) nodeCache[property] = value;
+              callback(pathCb, property, value);
+              debug(JSON.stringify(this.cache));
+            }            
+          });
+          resolve();          
+        },
+        path,
+        () => this.error('no answer, timeout', reject),
+      );
+    });
+  }
+
+  /**
    * It will OPEN a node and watch for changing data
    * @param path      path to the node
    * @param callback  callback function will notified about changes
