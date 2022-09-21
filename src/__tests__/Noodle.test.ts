@@ -10,7 +10,7 @@ let expectedMessage: string;
 let mockedResponse: string;
 let receivedMessage: string;
 let server: TcpServerConnection;
-let noodle: any;
+let noodle: Noodle;
 
 beforeAll(async () => {
   server = new TcpServerConnection(6107);
@@ -26,7 +26,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  noodle.__close__();  
+  noodle.__close__();
   await waitForAnEvent(noodle.lw3client, 'close', debug);
   server.close();
   debug('wait server to close');
@@ -46,8 +46,7 @@ beforeEach(() => {
 
 test('Noodle GET basic property access', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
-  mockedResponse = 'pw /NODE/TEST.Property=test\\tvalue';
-
+  mockedResponse = 'pw /NODE/TEST.Property=test\\tvalue';  
   const result = await noodle.NODE.TEST.Property;
 
   expect(result).toBe('test\tvalue');
@@ -137,7 +136,7 @@ test('property set to a string', async () => {
   expectedMessage = 'SET /NODE/TEST.Property=hello\\tworld';
   mockedResponse = 'pw /NODE/TEST.Property=hello\\tworld';
 
-  noodle.NODE.TEST.Property = 'hello\tworld';
+  noodle.NODE.TEST.Property = 'hello\tworld' as any;
   await noodle.__sync__();
   expect(receivedMessage).toBe(expectedMessage);
 });
@@ -145,7 +144,7 @@ test('property set to a string', async () => {
 test('sync should fail when no response is get for SET', async () => {
   expectedMessage = 'SET /NODE/TEST.Property=hello\\tworld';
   mockedResponse = '';
-  noodle.NODE.TEST.Property = 'hello\tworld';
+  noodle.NODE.TEST.Property = 'hello\tworld' as any;
   try {
     await noodle.__sync__();
     throw new Error('no exception');
@@ -163,7 +162,7 @@ test('method call should return with the answer', async () => {
   expectedMessage = 'CALL /PATH/TO/TEST/NODE:test(true,false)';
   mockedResponse = 'mO /PATH/TO/TEST/NODE:test=answer';
 
-  const answer = await noodle.PATH.TO.TEST.NODE.test(true, false);
+  const answer = await noodle.PATH.TO.TEST.NODE.test(true, false);  
   expect(receivedMessage).toBe(expectedMessage);
   expect(answer).toBe('answer');
 });
@@ -366,26 +365,25 @@ test('waitFor usage', async () => {
 // live
 //
 
-test('live should return immediately', async()=>{
-
+test('live should return immediately', async () => {
   expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
   mockedResponse = 'o- /PATH/TO/TEST/NODE';
-  server.once('frame',(data)=>{
+  server.once('frame', (data) => {
     expectedMessage = 'GET /PATH/TO/TEST/NODE.*';
     mockedResponse = 'pr /PATH/TO/TEST/NODE.Test=ablak\npr /PATH/TO/TEST/NODE.Hello=hello\\nworld\npr /PATH/TO/TEST/NODE.Counter=12';
   });
 
-  const testnode:any = await live(noodle.PATH.TO.TEST.NODE);
+  const testnode: any = await live(noodle.PATH.TO.TEST.NODE);
 
   expect(testnode.Test).toBe('ablak');
   expect(testnode.Hello).toBe('hello\nworld');
   expect(testnode.Counter).toBe(12);
   expect(testnode.Foo).toBe(undefined);
-  
+
   // send some update
   server.write(-1, 'CHG /TEST/A.test1=somevalue\r\n');
   server.write(-1, 'CHG /PATH/TO/TEST/NODE.Counter=13\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');  
+  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
   await waitLinesRcv(noodle.lw3client.connection, 3);
 
   expect(testnode.Counter).toBe(13);

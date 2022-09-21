@@ -3,13 +3,41 @@ import { TcpClientConnection } from './tcpclientconnection';
 import Debug from 'debug';
 const debug = Debug('Noodle');
 
-export interface Noodle {
-  ():any;  
-  [name: string]: Noodle |(()=>void)|Promise<void>|Lw3Client|string[]|string;
-  __close__():void;
-  path:string[];
-  sync:Promise<void>;
-  lw3client:Lw3Client;  
+export type Noodle = {
+  (): any;
+  [name: string]: Noodle;
+} & {
+  [method:string]: (...args: any[])=>string
+} & {
+  [property: string]: string;
+} & {
+  /** Close the connection to the server. */
+  __close__(): void;
+  /** Wait until every pending communication finishes. */
+  __sync__(): Promise<void>;
+  /** Will call the callback function when any property has changed under the node.
+   * The optional condition might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true"
+   * @returns {Promise<number>} the number can be used remove the callback later
+   */
+  addListener(callback:(path:string, property:string, value:string)=>void, condition?:string): Promise<number>;
+
+  /** It will remove the callback function (and also close the node if it is not needed to keep open) */
+  closeListener(id:number): Promise<void>;
+
+  /** Will call the callback function only once when a property has changed under the node.
+   * The optional condition might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true"
+   */
+  once(callback:(path:string, property:string, value:string)=>void, condition?:string): Promise<number>;
+
+  /** Will resolve when a change has happened under the node.
+   * The optional condition might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true"
+   */
+   waitFor(condition?:string): Promise<string>;
+
+  /** parts of the path. It is not intended for external use */
+  path: string[];  
+  /** the connection object. It is not intended for external use */
+  lw3client: Lw3Client;
 }
 
 interface NoodleClientParameters {
@@ -109,7 +137,7 @@ const NoodleProxyHandler: ProxyHandler<Noodle> = {
   },
 };
 
-export const NoodleClient = (options: NoodleClientParameters = {}):Noodle => {
+export const NoodleClient = (options: NoodleClientParameters = {}): Noodle => {
   options.host = options.host || 'localhost';
   options.port = options.port || 6107;
   options.waitresponses = options.waitresponses || false;
@@ -119,39 +147,44 @@ export const NoodleClient = (options: NoodleClientParameters = {}):Noodle => {
     new Lw3Client(new TcpClientConnection(options.host, options.port), options.waitresponses),
   );
   debug('Noodle created');
-  return (new Proxy(obj2fun(clientObj), NoodleProxyHandler)) as Noodle;
+  return new Proxy(obj2fun(clientObj), NoodleProxyHandler) as Noodle;
 };
 
 interface LiveObject {
-  ():any;  
+  (): any;
   node: Noodle;
-  subscriptionId:number;
-  cache:{[path:string]:string}
+  subscriptionId: number;
+  cache: { [path: string]: string };
 }
 
 const LiveObjProxyHandler: ProxyHandler<LiveObject> = {
-  get(target: LiveObject, key: string): any {    
+  get(target: LiveObject, key: string): any {
     return target.cache[key];
   },
 
   set(target: LiveObject, key: string, value: string): boolean {
-    target.node[key] = value;
+    (target.node as any)[key] = value;
     return true;
-  }  
-}
+  },
+};
 
 export const live = async (node: Noodle) => {
-  const liveObj:LiveObject = Object.assign(()=>{/* */}, {
-    node,
-    cache: {},
-    subscriptionId: 0
-  });    
-  const updater = ((obj:LiveObject):((path:string,property:string,value:string)=>void) => { 
-    return (path:string,property:string,value:string):void => {
-      obj.cache[property] = value; 
-    }
+  const liveObj: LiveObject = Object.assign(
+    () => {
+      /* */
+    },
+    {
+      node,
+      cache: {},
+      subscriptionId: 0,
+    },
+  );
+  const updater = ((obj: LiveObject): ((path: string, property: string, value: string) => void) => {
+    return (path: string, property: string, value: string): void => {
+      obj.cache[property] = value;
+    };
   })(liveObj);
-  liveObj.subscriptionId = await node.lw3client.OPEN('/'+node.path.join('/'), updater);
-  await node.lw3client.FETCHALL('/'+node.path.join('/'), updater);
+  liveObj.subscriptionId = await node.lw3client.OPEN('/' + node.path.join('/'), updater);
+  await node.lw3client.FETCHALL('/' + node.path.join('/'), updater);
   return new Proxy(obj2fun(liveObj), LiveObjProxyHandler);
-}
+};

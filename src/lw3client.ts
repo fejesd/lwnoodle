@@ -405,14 +405,14 @@ export class Lw3Client extends EventEmitter {
 
   /**
    * Will fetch all property of a node and store in the cache
-   * @param path 
+   * @param path
    */
-  FETCHALL(path: string, callback:(path:string, property:string, value:string)=>void):Promise<void> {    
-    return new Promise((resolve, reject) => {    
+  FETCHALL(path: string, callback: (path: string, property: string, value: string) => void): Promise<void> {
+    return new Promise((resolve, reject) => {
       this.cmdSend(
         'GET ' + path + '.*',
         (data: string[], pathCb: any) => {
-          data.forEach((dline:string)=>{
+          data.forEach((dline: string) => {
             if (dline.charAt(0) === 'p') {
               const n = dline.indexOf('=');
               const p = dline.indexOf('.');
@@ -423,9 +423,9 @@ export class Lw3Client extends EventEmitter {
               if (nodeCache) nodeCache[property] = value;
               callback(pathCb, property, value);
               debug(JSON.stringify(this.cache));
-            }            
+            }
           });
-          resolve();          
+          resolve();
         },
         path,
         () => this.error('no answer, timeout', reject),
