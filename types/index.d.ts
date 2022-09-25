@@ -41,6 +41,6 @@ interface NoodleClientParameters {
     /** Should we wait the responses, before send a new command. Default is false */
     waitresponses?: boolean;
 }
-export declare const NoodleClient: (options?: NoodleClientParameters) => Noodle;
+export declare const NoodleClient: (options?: NoodleClientParameters | string) => Promise<Noodle>;
 export declare const live: (node: Noodle) => Promise<() => void>;
 export {};

@@ -21,7 +21,8 @@ beforeAll(async () => {
     expect(parts[1]).toBe(expectedMessage);
     if (mockedResponse !== '') server.write(1, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
   });
-  noodle = await NoodleClient();
+  noodle = NoodleClient();
+  await noodle.__connect__();
 });
 
 afterAll(async () => {

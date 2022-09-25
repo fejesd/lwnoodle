@@ -11,6 +11,11 @@ export type Noodle = {
 } & {
   [property: string]: string;
 } & {
+  /** Return with a promise which will fullfilled when the connection has been created. It is fullfilled immediately if 
+   * the connection is already opened. As the client attempts reconnect continously on error, the promise will never
+   * rejected
+   */
+  __connect__():Promise<void>;
   /** Close the connection to the server. */
   __close__(): void;
   /** Wait until every pending communication finishes. */
@@ -103,11 +108,20 @@ const NoodleProxyHandler: ProxyHandler<Noodle> = {
   get(target: Noodle, key: string): any {
     if (key === 'then') return undefined; // this is needed to use Noodle in Promises
     if (key in target) return target[key as keyof typeof target]; // make target fields accessible. Is this needed?
-    if (key === '__close__')
+    if (key === '__close__') {
       return () => {
         target.lw3client.close();
       };
-    if (key === '__sync__') return target.lw3client.sync.bind(target.lw3client);
+    } else if (key === '__sync__') {
+      return target.lw3client.sync.bind(target.lw3client);
+    } else if (key === '__connect__') {
+      return ():Promise<void> => {
+        return new Promise((resolve, reject) => {
+            if (target.lw3client.connection.isConnected()) resolve();
+            else target.lw3client.connection.once('connect',()=>resolve());
+        });
+      }
+    }
     const castedToProperty = key.indexOf('__prop__') !== -1;
     const isNode = key === key.toUpperCase() || key.indexOf('__node__') !== -1;
     const isMethod = key[0] === key[0].toLowerCase() || key.indexOf('__method__') !== -1;
@@ -138,7 +152,7 @@ const NoodleProxyHandler: ProxyHandler<Noodle> = {
   },
 };
 
-export const NoodleClient = (options: NoodleClientParameters | string = 'localhost'): Promise<Noodle> => {
+export const NoodleClient = (options: NoodleClientParameters | string = 'localhost'): Noodle => {
   if (typeof options === 'string') {
     const opts: NoodleClientParameters = { host: options, port: 6107, waitresponses: false };
     options = opts;
@@ -153,12 +167,7 @@ export const NoodleClient = (options: NoodleClientParameters | string = 'localho
     new Lw3Client(new TcpClientConnection(options.host, options.port), options.waitresponses),
   );
   debug('Noodle client created');
-  return new Promise((resolve, reject) => {
-    clientObj.lw3client.connection.once('connect', () => {
-      resolve(new Proxy(obj2fun(clientObj), NoodleProxyHandler) as Noodle);
-      debug('Noodle promise resolved');
-    });
-  });
+  return new Proxy(obj2fun(clientObj), NoodleProxyHandler) as Noodle
 };
 
 interface LiveObject {
