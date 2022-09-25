@@ -6,7 +6,7 @@
       "outDir": "./lib",
       "strict": true,
       "sourceMap": true,
-      "declarationDir": "./types"
+      "declarationDir": "./lib"
     },
     "include": ["src"],
     "exclude": ["node_modules", "**/__tests__/*"]

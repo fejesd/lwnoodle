@@ -100,3 +100,21 @@ const mynode = lwnoodle.live(noodle.MANAGEMENT.DATETIME);
 console.log(mynode.DateTime); //DateTime property will hold the actual value, kept updated automatically
 
 ```
+
+## Use with typescript
+
+Type definition is included in the package, so you will have nice code completion with your IDE. 
+
+Because of the tricks involved about ORM and ES5 Proxies, when using tpyescript a casting to any is needed while setting a property:
+
+```typescript app.ts
+
+noodle.PATH.TO.MY.NODE.PropertyName = 'something';    // will raise a compilation-time error
+
+//They will work as expected:
+
+noodle.PATH.TO.MY.NODE.PropertyName = 'something' as any;  
+noodle.PATH.TO.MY.NODE.PropertyName = 42 as any;
+noodle.PATH.TO.MY.NODE.PropertyName = true as any;
+
+```
