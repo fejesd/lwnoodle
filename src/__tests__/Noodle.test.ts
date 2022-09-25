@@ -15,14 +15,13 @@ let noodle: Noodle;
 beforeAll(async () => {
   server = new TcpServerConnection(6107);
   await waitForAnEvent(server, 'listening', debug);
-  noodle = NoodleClient();
-  await waitForAnEvent(noodle.lw3client, 'connect', debug);
   server.on('frame', (id, data) => {
     const parts = data.split('#');
     receivedMessage = parts[1];
     expect(parts[1]).toBe(expectedMessage);
     if (mockedResponse !== '') server.write(1, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
   });
+  noodle = await NoodleClient();
 });
 
 afterAll(async () => {
@@ -46,7 +45,7 @@ beforeEach(() => {
 
 test('Noodle GET basic property access', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
-  mockedResponse = 'pw /NODE/TEST.Property=test\\tvalue';  
+  mockedResponse = 'pw /NODE/TEST.Property=test\\tvalue';
   const result = await noodle.NODE.TEST.Property;
 
   expect(result).toBe('test\tvalue');
@@ -162,7 +161,7 @@ test('method call should return with the answer', async () => {
   expectedMessage = 'CALL /PATH/TO/TEST/NODE:test(true,false)';
   mockedResponse = 'mO /PATH/TO/TEST/NODE:test=answer';
 
-  const answer = await noodle.PATH.TO.TEST.NODE.test(true, false);  
+  const answer = await noodle.PATH.TO.TEST.NODE.test(true, false);
   expect(receivedMessage).toBe(expectedMessage);
   expect(answer).toBe('answer');
 });
