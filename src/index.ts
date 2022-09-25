@@ -11,11 +11,11 @@ export type Noodle = {
 } & {
   [property: string]: string;
 } & {
-  /** Return with a promise which will fullfilled when the connection has been created. It is fullfilled immediately if 
+  /** Return with a promise which will fullfilled when the connection has been created. It is fullfilled immediately if
    * the connection is already opened. As the client attempts reconnect continously on error, the promise will never
    * rejected
    */
-  __connect__():Promise<void>;
+  __connect__(): Promise<void>;
   /** Close the connection to the server. */
   __close__(): void;
   /** Wait until every pending communication finishes. */
@@ -115,12 +115,12 @@ const NoodleProxyHandler: ProxyHandler<Noodle> = {
     } else if (key === '__sync__') {
       return target.lw3client.sync.bind(target.lw3client);
     } else if (key === '__connect__') {
-      return ():Promise<void> => {
+      return (): Promise<void> => {
         return new Promise((resolve, reject) => {
-            if (target.lw3client.connection.isConnected()) resolve();
-            else target.lw3client.connection.once('connect',()=>resolve());
+          if (target.lw3client.connection.isConnected()) resolve();
+          else target.lw3client.connection.once('connect', () => resolve());
         });
-      }
+      };
     }
     const castedToProperty = key.indexOf('__prop__') !== -1;
     const isNode = key === key.toUpperCase() || key.indexOf('__node__') !== -1;
@@ -167,7 +167,7 @@ export const NoodleClient = (options: NoodleClientParameters | string = 'localho
     new Lw3Client(new TcpClientConnection(options.host, options.port), options.waitresponses),
   );
   debug('Noodle client created');
-  return new Proxy(obj2fun(clientObj), NoodleProxyHandler) as Noodle
+  return new Proxy(obj2fun(clientObj), NoodleProxyHandler) as Noodle;
 };
 
 interface LiveObject {
