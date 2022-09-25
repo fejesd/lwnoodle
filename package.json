@@ -31,7 +31,7 @@
     "Lightware 3 protocol"
   ],
   "author": "David Fejes",
-  "license": "ISC",
+  "license": "BSD-3-Clause",
   "bugs": {
     "url": "https://github.com/fejesd/lwnoodle/issues"
   },
