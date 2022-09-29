@@ -10,6 +10,14 @@ interface ServerSocket {
   outputbuffer: string[];
 }
 
+export declare interface TcpServerConnection {
+  on(event: 'listening'|'serverClose', listener: () => void): this;  
+  on(event: 'error', listener: (e:Error) => void): this;  
+  on(event: 'connect'|'close', listener: (socketId:number) => void): this;  
+  on(event: 'socketerror', listener: (socketId:number, e:Error) => void): this;  
+  on(event: 'frame', listener: (socketId:number, msg:string) => void): this;  
+}
+
 export class TcpServerConnection extends EventEmitter {
   server: Server;
   sockets: { [id: number]: ServerSocket };
@@ -61,7 +69,7 @@ export class TcpServerConnection extends EventEmitter {
     });
     s.on('error', (e: Error) => {
       debug(`Socket ${socketId} has reported an error: ` + e.toString());
-      this.emit('error', socketId, e);
+      this.emit('socketerror', socketId, e);
     });
     s.on('drain', () => {
       this.sockets[socketId].drained = true;
@@ -86,7 +94,7 @@ export class TcpServerConnection extends EventEmitter {
       this.sockets[socketId].inputbuffer = messages[messages.length - 1];
       if (this.sockets[socketId].inputbuffer.length > 1e6) {
         this.sockets[socketId].inputbuffer = '';
-        this.emit('error', new Error(`Socket {$socketId} incoming buffer is full, no delimiter was received since 1MB of data. Data is dropped.`));
+        this.emit('socketerror', socketId, new Error(`Socket incoming buffer is full, no delimiter was received since 1MB of data. Data is dropped.`));
       }
     });
     this.emit('connect', socketId);
@@ -113,7 +121,7 @@ export class TcpServerConnection extends EventEmitter {
       if (!this.sockets[socketId].drained) debug(`Socket ${socketId} output buffer full`);
     } else {
       if (this.sockets[socketId].outputbuffer.length < 1024) this.sockets[socketId].outputbuffer.push(msg); // message delayed
-      else this.emit('error', socketId, new Error('Outgoing buffer is stalled, message has been dropped'));
+      else this.emit('socketerror', socketId, new Error('Outgoing buffer is stalled, message has been dropped'));
     }
   }
 
