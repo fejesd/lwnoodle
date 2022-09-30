@@ -1,9 +1,9 @@
 import { Lw3Client } from '../lw3client';
 import { TcpServerConnection } from '../tcpserverconnection';
-import Debug from 'debug';
+import { escape, unescape } from '../escaping';
 import { sleep, waitForAnEvent, waitLinesRcv } from './helpers';
 import { TcpClientConnection } from '../tcpclientconnection';
-import { extendWith, isArguments } from 'lodash';
+import Debug from 'debug';
 const debug = Debug('Test');
 
 Debug.enable('TcpServerConnection,Test,Lw3Client');
@@ -39,21 +39,6 @@ beforeEach(() => {
   debug('');
   debug('=======' + expect.getState().currentTestName + '=======');
   debug('');
-});
-
-test('escaping and unescaping', () => {
-  //  \ { } # % ( ) \r \n \t
-  const testbenches = [
-    ['árvíztűrő tükörfúrógép', 'árvíztűrő tükörfúrógép'],
-    ['test\nelek\ntest\ttest\ttest', 'test\\nelek\\ntest\\ttest\\ttest'],
-    ['hello{}\\()', 'hello\\{\\}\\\\\\(\\)'],
-    ['test#dfs%dfsd', 'test\\#dfs\\%dfsd'],
-  ];
-  for (const test of testbenches) {
-    expect(Lw3Client.escape(test[0])).toBe(test[1]);
-    expect(Lw3Client.unescape(test[1])).toBe(test[0]);
-    expect(Lw3Client.unescape(Lw3Client.unescape(Lw3Client.escape(Lw3Client.escape(test[0]))))).toBe(test[0]);
-  }
 });
 
 test('GET should perform the lw3 command and return with the result', async () => {
@@ -137,7 +122,7 @@ test('CALL', async () => {
 
   for (const testbench of testbenches) {
     try {
-      expectedMessage = 'CALL ' + testbench[0] + '(' + Lw3Client.escape(testbench[1] as string) + ')';
+      expectedMessage = 'CALL ' + testbench[0] + '(' + escape(testbench[1] as string) + ')';
       mockedResponse = testbench[2] as string;
       const test = await client.CALL(testbench[0] as string, testbench[1] as string);
       expect(test).toStrictEqual(testbench[3]);
@@ -156,7 +141,7 @@ test('SET', async () => {
 
   for (const testbench of testbenches) {
     try {
-      expectedMessage = 'SET ' + testbench[0] + '=' + Lw3Client.escape(testbench[1] as string);
+      expectedMessage = 'SET ' + testbench[0] + '=' + escape(testbench[1] as string);
       mockedResponse = testbench[2] as string;
       await client.SET(testbench[0] as string, testbench[1] as string);
       expect(testbench[3]).toStrictEqual(true);

@@ -16,13 +16,14 @@ export async function waitForAnEvent(obj: EventEmitter, eventName: string, debug
       debug(`Timeout... no ${eventName} event was received`);
       reject();
     }, timeout);
-    obj.on(eventName, () => {
+    const handler = () => {
       if (--count === 0) {
         clearTimeout(timer);
-        obj.removeAllListeners(eventName);
+        obj.removeListener(eventName, handler);
         resolve();
       }
-    });
+    };
+    obj.on(eventName, handler);
   });
 }
 

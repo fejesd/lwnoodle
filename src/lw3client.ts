@@ -1,5 +1,6 @@
 import { ClientConnection } from './clientconnection';
 import { EventEmitter } from 'node:events';
+import { escape, unescape } from './escaping';
 import Debug from 'debug';
 import * as _ from 'lodash';
 
@@ -70,46 +71,6 @@ export class Lw3Client extends EventEmitter {
     else if (value.toUpperCase() === 'TRUE') retvalue = true;
     else retvalue = value;
     return retvalue;
-  }
-
-  /**
-   * Escape string according to lw3 protocol
-   * @param value string to escape
-   */
-  static escape(value: string): string {
-    //  \ { } # % ( ) \r \n \t
-    // todo : more efficient way
-    value = value
-      .replace(/\\/g, '\\\\')
-      .replace(/\t/g, '\\t')
-      .replace(/\n/g, '\\n')
-      .replace(/\r/g, '\\r')
-      .replace(/{/g, '\\{')
-      .replace(/}/g, '\\}')
-      .replace(/\(/g, '\\(')
-      .replace(/\)/g, '\\)')
-      .replace(/#/g, '\\#')
-      .replace(/%/g, '\\%');
-    return value;
-  }
-
-  /**
-   * Unescape string according to lw3 protocol
-   * @param value string to escape
-   */
-  static unescape(value: string): string {
-    value = value
-      .replace(/\\\\/g, '\\')
-      .replace(/\\t/g, '\t')
-      .replace(/\\n/g, '\n')
-      .replace(/\\r/g, '\r')
-      .replace(/\\{/g, '{')
-      .replace(/\\}/g, '}')
-      .replace(/\\\(/g, '(')
-      .replace(/\\\)/g, ')')
-      .replace(/\\#/g, '#')
-      .replace(/\\%/g, '%');
-    return value;
   }
 
   constructor(connection: ClientConnection, waitresponses: boolean = false) {
@@ -246,7 +207,7 @@ export class Lw3Client extends EventEmitter {
     const proppath = data.substring(0, eq);
     const nodepath = proppath.substring(0, proppath.indexOf('.'));
     const propname = proppath.substring(proppath.indexOf('.') + 1, proppath.length);
-    const value = Lw3Client.unescape(data.substring(eq + 1, data.length));
+    const value = unescape(data.substring(eq + 1, data.length));
     // update cache
     const nodecache = this.cache[nodepath];
     if (nodecache) nodecache[propname] = value;
@@ -306,7 +267,7 @@ export class Lw3Client extends EventEmitter {
    * @returns promise will fullfill on success, reject on failure
    */
   SET(property: string, value: string): Promise<void> {
-    value = Lw3Client.escape(value);
+    value = escape(value);
     // todo sanity check
     return new Promise<void>((resolve, reject) => {
       this.cmdSend(
@@ -330,7 +291,7 @@ export class Lw3Client extends EventEmitter {
    * @returns promise will fullfill on success (and return the method return value), reject on failure
    */
   CALL(property: string, param: string): Promise<string> {
-    param = Lw3Client.escape(param);
+    param = escape(param);
     // todo sanity check
     return new Promise<string>((resolve, reject) => {
       this.cmdSend(
@@ -390,7 +351,7 @@ export class Lw3Client extends EventEmitter {
           if (line.charAt(0) !== 'p') return this.error('GET response contains no property... ' + line, reject);
           const n = line.indexOf('=');
           if (n === -1) return this.error('Malformed GET response: ' + line, reject);
-          const value = Lw3Client.convertValue(Lw3Client.unescape(line.substring(n + 1, line.length)));
+          const value = Lw3Client.convertValue(unescape(line.substring(n + 1, line.length)));
           // if this node is cached, store the property into the cache
           const nodeCache = this.cache[pathPartsCb[0]];
           if (nodeCache) nodeCache[pathPartsCb[1]] = value;
@@ -417,7 +378,7 @@ export class Lw3Client extends EventEmitter {
               const n = dline.indexOf('=');
               const p = dline.indexOf('.');
               if (n === -1) return this.error('Malformed GET response: ' + dline, reject);
-              const value = Lw3Client.convertValue(Lw3Client.unescape(dline.substring(n + 1, dline.length)));
+              const value = Lw3Client.convertValue(unescape(dline.substring(n + 1, dline.length)));
               const nodeCache = this.cache[pathCb];
               const property = dline.substring(p + 1, n);
               if (nodeCache) nodeCache[property] = value;

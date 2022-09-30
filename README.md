@@ -50,7 +50,7 @@ if (await noodle.MEDIA.GPIO.P7.InputState) {
 
 Setting properties:
 ```javascript
-noodle.MEDIA.GPIO.P1.state = 'High';
+noodle.MEDIA.GPIO.P1.State = 'High';
 
 //setting is done in async way in the background. If you need to wait while it completes, please use:
 
@@ -100,13 +100,15 @@ You can create a local synchronized copy of a node which can be used without ava
 ```javascript
 const mynode = lwnoodle.live(noodle.MANAGEMENT.DATETIME);
 
-console.log(mynode.DateTime); //DateTime property will hold the actual value, kept updated automatically
+// then use it anytime later
+
+console.log(mynode.Time); //Time property will hold the actual value, kept updated automatically
 
 ```
 
 ## Naming conventions
 
-The library relies on name conventions, that Property names shall be CamelCase, nodes shall be UPPERCASE, methods shall be lowercase. You can force casting:
+The library relies on name conventions, that Property names shall be CamelCase, nodes shall be UPPERCASE, methods are lowerCamelCase. You can force casting:
 
 ```javascript
 console.log(noodle.DATE.time__property__)           //by adding __property__, this will behave as a property
