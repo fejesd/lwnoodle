@@ -1,3 +1,4 @@
+import { NoodleServerObject } from './server';
 import { TcpServerConnection } from './tcpserverconnection';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
@@ -6,6 +7,7 @@ import * as _ from 'lodash';
 const debug = Debug('Lw3Server');
 
 export type Lw3ServerOptions = {
+  name?: string;
   port?: number;
 };
 
@@ -45,6 +47,9 @@ export enum Lw3ErrorCodes {
  * Implements the LW3 Server at protocol level
  */
 export class Lw3Server extends EventEmitter {
+  /** root node */
+  root: NoodleServerObject;
+  /** session data */
   sessions: { [socketId: number]: Lw3ServerSession };
   server: TcpServerConnection;
   options: Lw3ServerOptions;
@@ -84,17 +89,11 @@ export class Lw3Server extends EventEmitter {
     return '%E' + ('00' + (errorcode as number).toString()).substr(-3) + ':' + Lw3Server.getErrorCodeString(errorcode);
   }
 
-  constructor(options: number | Lw3ServerOptions = 6107) {
+  constructor(options: Lw3ServerOptions) {
     super();
     this.sessions = [];
-    this.options = {
-      port: 6107,
-    };
-    if (typeof options === 'number') this.options.port = options;
-    else {
-      this.options.port = options.port || 6107;
-    }
-    this.server = new TcpServerConnection(this.options.port);
+    this.options = options;
+    this.server = new TcpServerConnection(this.options.port || 6107);
     this.server.on('listening', () => {
       debug(`Server started`);
       this.emit('listening');
@@ -126,6 +125,8 @@ export class Lw3Server extends EventEmitter {
       this.emit('socketerror', socketId, e);
     });
     this.server.on('frame', this.lineRcv.bind(this));
+
+    this.root = new NoodleServerObject(options.name || 'default', [], this);
   }
 
   private async lineRcv(socketId: number, msg: string) {

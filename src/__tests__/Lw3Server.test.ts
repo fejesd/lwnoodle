@@ -13,7 +13,7 @@ let client: TcpClientConnection;
 let receivedMessage: string[] = [];
 
 beforeAll(async () => {
-  server = new Lw3Server();
+  server = new Lw3Server({ port: 6107 });
   await waitForAnEvent(server, 'listening', debug);
   client = new TcpClientConnection();
   await waitForAnEvent(server, 'connect', debug);

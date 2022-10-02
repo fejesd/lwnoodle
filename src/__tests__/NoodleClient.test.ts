@@ -1,4 +1,4 @@
-import { Noodle, NoodleClient, live } from '../index';
+import { NoodleClient, noodleClient, live } from '../index';
 import { sleep, waitForAnEvent, waitLinesRcv } from './helpers';
 import { TcpServerConnection } from '../tcpserverconnection';
 import Debug from 'debug';
@@ -10,7 +10,7 @@ let expectedMessage: string;
 let mockedResponse: string;
 let receivedMessage: string;
 let server: TcpServerConnection;
-let noodle: Noodle;
+let noodle: NoodleClient;
 
 beforeAll(async () => {
   server = new TcpServerConnection(6107);
@@ -21,7 +21,7 @@ beforeAll(async () => {
     expect(parts[1]).toBe(expectedMessage);
     if (mockedResponse !== '') server.write(1, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
   });
-  noodle = NoodleClient();
+  noodle = noodleClient();
   await noodle.__connect__();
 });
 

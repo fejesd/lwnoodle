@@ -1,6 +1,7 @@
 import { ClientConnection } from './clientconnection';
 import { EventEmitter } from 'node:events';
 import { escape, unescape } from './escaping';
+import { convertValue } from './common';
 import Debug from 'debug';
 import * as _ from 'lodash';
 
@@ -58,20 +59,6 @@ export class Lw3Client extends EventEmitter {
   cmdToSend: string[]; /* Outgoing message FIFO */
   syncPromises: SyncPromise[]; /* List of promise resolve functions that shall be fulfilled when there are no more tasks */
   cache: { [path: string]: { [property: string]: string } };
-
-  /* Helper function, convert common values to appropriate JavaScript types. (integer / boolean / list) */
-  static convertValue(value: string) {
-    let retvalue: any;
-    if (value.indexOf(';') !== -1) {
-      retvalue = value.split(';');
-      if (retvalue.slice(-1)[0] === '') retvalue.pop();
-      for (let i = 0; i < retvalue.length; i++) retvalue[i] = Lw3Client.convertValue(retvalue[i]);
-    } else if (!isNaN(parseFloat(value))) retvalue = parseFloat(value);
-    else if (value.toUpperCase() === 'FALSE') retvalue = false;
-    else if (value.toUpperCase() === 'TRUE') retvalue = true;
-    else retvalue = value;
-    return retvalue;
-  }
 
   constructor(connection: ClientConnection, waitresponses: boolean = false) {
     super();
@@ -221,7 +208,7 @@ export class Lw3Client extends EventEmitter {
       if (i.path === nodepath) {
         if (i.property === '*' || i.property === '' || i.property === propname) {
           if (i.value === '' || i.value === value) {
-            i.callback(nodepath, propname, Lw3Client.convertValue(value));
+            i.callback(nodepath, propname, convertValue(value));
             if (i.count !== -1) {
               i.count--;
               if (!i.count) subscriptionsToClose.push(i.subscriptionId);
@@ -335,7 +322,7 @@ export class Lw3Client extends EventEmitter {
           if (propCache) {
             // cache hit. Return with the cached value immediatately
             debug(`Cache hit for ${pathParts[0]}.${pathParts[1]}`);
-            resolve(Lw3Client.convertValue(propCache));
+            resolve(convertValue(propCache));
             return;
           }
         }
@@ -351,7 +338,7 @@ export class Lw3Client extends EventEmitter {
           if (line.charAt(0) !== 'p') return this.error('GET response contains no property... ' + line, reject);
           const n = line.indexOf('=');
           if (n === -1) return this.error('Malformed GET response: ' + line, reject);
-          const value = Lw3Client.convertValue(unescape(line.substring(n + 1, line.length)));
+          const value = convertValue(unescape(line.substring(n + 1, line.length)));
           // if this node is cached, store the property into the cache
           const nodeCache = this.cache[pathPartsCb[0]];
           if (nodeCache) nodeCache[pathPartsCb[1]] = value;
@@ -378,7 +365,7 @@ export class Lw3Client extends EventEmitter {
               const n = dline.indexOf('=');
               const p = dline.indexOf('.');
               if (n === -1) return this.error('Malformed GET response: ' + dline, reject);
-              const value = Lw3Client.convertValue(unescape(dline.substring(n + 1, dline.length)));
+              const value = convertValue(unescape(dline.substring(n + 1, dline.length)));
               const nodeCache = this.cache[pathCb];
               const property = dline.substring(p + 1, n);
               if (nodeCache) nodeCache[property] = value;

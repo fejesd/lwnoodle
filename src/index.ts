@@ -1,2 +1,2 @@
-export { Noodle } from './noodle';
-export { NoodleClient, live } from './client';
+export { Noodle, NoodleClient, NoodleServer } from './noodle';
+export { noodleClient, live } from './client';

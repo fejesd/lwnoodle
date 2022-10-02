@@ -1,4 +1,4 @@
-import { Noodle } from './noodle';
+import { Noodle, NoodleClient } from './noodle';
 import { Lw3Client } from './lw3client';
 import { TcpClientConnection } from './tcpclientconnection';
 import Debug from 'debug';
@@ -44,8 +44,8 @@ function obj2fun(object: object): () => void {
   return func;
 }
 
-const NoodleProxyHandler: ProxyHandler<Noodle> = {
-  async apply(target: Noodle, ctx: string, args: any[]) {
+const NoodleClientProxyHandler: ProxyHandler<NoodleClient> = {
+  async apply(target: NoodleClient, ctx: string, args: any[]) {
     const last = target.path[target.path.length - 1];
     const path = '/' + target.path.slice(0, -1).join('/');
     if (last === 'addListener') {
@@ -64,7 +64,7 @@ const NoodleProxyHandler: ProxyHandler<Noodle> = {
     }
   },
 
-  get(target: Noodle, key: string): any {
+  get(target: NoodleClient, key: string): any {
     if (key === 'then') return undefined; // this is needed to use Noodle in Promises
     if (key in target) return target[key as keyof typeof target]; // make target fields accessible. Is this needed?
     if (key === '__close__') {
@@ -87,7 +87,7 @@ const NoodleProxyHandler: ProxyHandler<Noodle> = {
     if ((isNode || isMethod) && !castedToProperty) {
       key = key.replace('__method__', '').replace('__node__', '');
       const node = new NoodleClientObject(target.name, target.path.slice().concat(key), target.lw3client);
-      return new Proxy(obj2fun(node), NoodleProxyHandler);
+      return new Proxy(obj2fun(node), NoodleClientProxyHandler);
     } else {
       key = key.replace('__prop__', '');
       const path = '/' + target.path.join('/');
@@ -96,7 +96,7 @@ const NoodleProxyHandler: ProxyHandler<Noodle> = {
     }
   },
 
-  set(target: Noodle, key: string, value: string): boolean {
+  set(target: NoodleClient, key: string, value: string): boolean {
     key = key.replace('__prop__', '');
     // unfortunately ProxyHandler.set should return immediately with a boolean, there is no way to make it async
     // therefore we will catch the rejections from lw3client.SET here and drop them. __sync__() call should be used after set if error detection is important.
@@ -111,7 +111,7 @@ const NoodleProxyHandler: ProxyHandler<Noodle> = {
   },
 };
 
-export const NoodleClient = (options: NoodleClientParameters | string = 'localhost'): Noodle => {
+export const noodleClient = (options: NoodleClientParameters | string = 'localhost'): NoodleClient => {
   if (typeof options === 'string') {
     const opts: NoodleClientParameters = { host: options, port: 6107, waitresponses: false };
     options = opts;
@@ -126,7 +126,7 @@ export const NoodleClient = (options: NoodleClientParameters | string = 'localho
     new Lw3Client(new TcpClientConnection(options.host, options.port), options.waitresponses),
   );
   debug('Noodle client created');
-  return new Proxy(obj2fun(clientObj), NoodleProxyHandler) as Noodle;
+  return new Proxy(obj2fun(clientObj), NoodleClientProxyHandler) as NoodleClient;
 };
 
 interface LiveObject {
@@ -147,7 +147,7 @@ const LiveObjProxyHandler: ProxyHandler<LiveObject> = {
   },
 };
 
-export const live = async (node: Noodle) => {
+export const live = async (node: NoodleClient) => {
   const liveObj: LiveObject = Object.assign(
     () => {
       /* */

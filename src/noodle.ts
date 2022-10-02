@@ -1,12 +1,15 @@
 import { Lw3Client } from './lw3client';
+import { Lw3Server } from './lw3server';
 
 export type Noodle = {
-  (): any;
-  [name: string]: Noodle;
-} & {
   [method: string]: (...args: any[]) => string;
 } & {
   [property: string]: string;
+};
+
+export type NoodleClient = Noodle & {
+  (): any;
+  [name: string]: NoodleClient;
 } & {
   /** Return with a promise which will fullfilled when the connection has been created. It is fullfilled immediately if
    * the connection is already opened. As the client attempts reconnect continously on error, the promise will never
@@ -40,4 +43,14 @@ export type Noodle = {
   path: string[];
   /** the connection object. It is not intended for external use */
   lw3client: Lw3Client;
+};
+
+export type NoodleServer = Noodle & {
+  (): any;
+  [name: string]: NoodleServer;
+} & {
+  /** parts of the path. It is not intended for external use */
+  path: string[];
+  /** the connection object. It is not intended for external use */
+  lw3server: Lw3Server;
 };
