@@ -62,6 +62,14 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServer> = {
     }
     if (mainkey in t.nodes) return new Proxy(obj2fun(t.nodes[key]), NoodleServerProxyHandler);
 
+    if (mainkey in t.methods)
+      return (
+        t.methods[mainkey].fun ||
+        ((...args: string[]) => {
+          /* */
+        })
+      );
+
     // todo: methods
 
     if ($) return undefined; // keys marked with $ sign are not auto-created

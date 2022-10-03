@@ -116,3 +116,32 @@ test('use property getters', () => {
   root.ProductName = { value: 'test' } as any;
   expect(root.ProductName__prop__).toBe('testtest');
 });
+
+test('using methods', () => {
+  const fun = (a: number, b: number) => {
+    return a + b;
+  };
+  root.PATH.TO.NODE.add = fun as any;
+
+  expect(root.PATH.TO.NODE.add).toBe(fun);
+  expect(root.PATH.TO.NODE.add(1, 2)).toBe(3);
+
+  root.PATH.TO.NODE.add = ((a: number, b: number) => {
+    return 2 * a + 2 * b;
+  }) as any;
+  expect(root.PATH.TO.NODE.add(1, 2)).toBe(6);
+
+  root.PATH.TO.NODE.add = {
+    fun: (a: number, b: number) => {
+      return 3 * a + 3 * b;
+    },
+  } as any;
+  expect(root.PATH.TO.NODE.add(1, 2)).toBe(9);
+
+  root.PATH.TO.NODE.subtr = {
+    fun: (a: number, b: number) => {
+      return a - b;
+    },
+  } as any;
+  expect(root.PATH.TO.NODE.subtr(3, 1)).toBe(2);
+});
