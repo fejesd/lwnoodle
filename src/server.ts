@@ -57,7 +57,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServer> = {
     const mainkey = key.split('__')[0];
     if (mainkey in t.properties) {
       const property = t.properties[mainkey];
-      if (property.getter) return property.getter();
+      if (property.getter) return property.getter.bind(property)();
       else return convertValue(property.value);
     }
     if (mainkey in t.nodes) return new Proxy(obj2fun(t.nodes[key]), NoodleServerProxyHandler);
@@ -106,7 +106,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServer> = {
         if ('getter' in value) t.properties[key].getter = value['getter' as keyof object];
       } else {
         // update with a primitive type
-        if (t.properties[key].setter) t.properties[key].setter?.(value);
+        if (t.properties[key].setter) t.properties[key].setter?.bind(t.properties[key])(value);
         else t.properties[key].value = value.toString();
       }
       return true;

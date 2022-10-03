@@ -29,6 +29,8 @@ test('creating properties automatically', () => {
   root.IsDone = false as any;
   expect(root.IsDone).toBe(false);
 
+  expect(root.NotExists).toBe('');
+
   root.MyProperty = { value: 'sample', manual: '' } as any;
   expect(root.MyProperty).toBe('sample');
 });
@@ -59,4 +61,58 @@ test('disable node autocreation with $ sign', () => {
   expect(() => root.MANAGEMENT.ROOM.ALFA.$BETA.Setting).toThrow(TypeError);
   expect(root.MANAGEMENT.ROOM.ALFA.BETA.Setting).toBe('');
   expect(root.MANAGEMENT.ROOM.ALFA.$BETA.Setting).toBe('');
+});
+
+test('change property values', () => {
+  root.ProductName = 'TestProduct' as any;
+  expect(root.ProductName).toBe('TestProduct');
+
+  root.ProductName = 'New' as any;
+  expect(root.ProductName).toBe('New');
+
+  root.ProductName = 42 as any;
+  expect(root.ProductName).toBe(42);
+
+  root.ProductName__prop__ = 43 as any;
+  expect(root.ProductName).toBe(43);
+
+  root.ProductName__prop__ = true as any;
+  expect(root.ProductName).toBe(true);
+
+  root.ProductName__prop__ = { value: 'something', manual: '123', rw: false } as any;
+  expect(root.ProductName).toBe('something');
+});
+
+test('use property setters', () => {
+  root.ProductName = {
+    setter(value: any) {
+      this.value = 'test' + value;
+    },
+  } as any;
+
+  root.ProductName = 'Product' as any;
+  expect(root.ProductName).toBe('testProduct');
+
+  root.ProductName = 'something' as any;
+  expect(root.ProductName).toBe('testsomething');
+
+  root.ProductName = { value: 'test' } as any; // is this behaviour okay?
+  expect(root.ProductName).toBe('test');
+});
+
+test('use property getters', () => {
+  root.ProductName = {
+    getter() {
+      return 'test' + this.value;
+    },
+  } as any;
+
+  root.ProductName = 'Product' as any;
+  expect(root.ProductName).toBe('testProduct');
+
+  root.ProductName = 'something' as any;
+  expect(root.ProductName).toBe('testsomething');
+
+  root.ProductName = { value: 'test' } as any;
+  expect(root.ProductName__prop__).toBe('testtest');
 });
