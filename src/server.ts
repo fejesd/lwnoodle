@@ -20,35 +20,31 @@ export interface Method {
 
 export class NoodleServerObject {
   /** name for this client */
-  clientname: string;
+  declare clientname: string;
   /** Path for this object. (it is empty if it is on root) */
-  path: string[];
+  declare path: string[];
   /** Lw3 client object reference */
-  lw3server?: Lw3Server;
+  declare lw3server?: Lw3Server;
   /** Container for properties */
-  properties: { [name: string]: Property };
+  declare properties: { [name: string]: Property };
   /** Container for methods */
-  methods: { [name: string]: Method };
+  declare methods: { [name: string]: Method };
   /** Container for child nodes */
-  nodes: { [name: string]: Noodle };
+  declare nodes: { [name: string]: Noodle };
 
-  constructor(name: string = 'default', path: string[] = [], lw3client?: Lw3Server) {
-    this.clientname = name;
-    this.path = path;
-    this.lw3server = lw3client;
+  constructor(name: string = 'default', path: string[] = [], lw3server?: Lw3Server) {
+    Object.defineProperty(this, 'clientname', { enumerable: false, configurable: true, value: name });
+    Object.defineProperty(this, 'path', { enumerable: false, configurable: true, value: path });
+    Object.defineProperty(this, 'lw3server', { enumerable: false, configurable: true, value: lw3server });
+    Object.defineProperty(this, 'properties', { enumerable: false, configurable: true, writable: true, value: {} });
+    Object.defineProperty(this, 'nodes', { enumerable: false, configurable: true, value: {} });
+    Object.defineProperty(this, 'methods', { enumerable: false, configurable: true, value: {} });
     this.properties = {};
-    this.nodes = {};
-    this.methods = {};
   }
 }
 
-export const NoodleServerProxyHandler: ProxyHandler<NoodleServer> = {
-  async apply(target: NoodleServer, ctx: string, args: any[]) {
-    /* */
-  },
-
-  get(target: NoodleServer, key: string): any {
-    const t: NoodleServerObject = target as unknown as NoodleServerObject;
+export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
+  get(t: NoodleServerObject, key: string): any {
     let $ = false;
     if (key[0] === '$') {
       $ = true;
@@ -60,7 +56,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServer> = {
       if (property.getter) return property.getter.bind(property)();
       else return convertValue(property.value);
     }
-    if (mainkey in t.nodes) return new Proxy(obj2fun(t.nodes[key]), NoodleServerProxyHandler);
+    if (mainkey in t.nodes) return new Proxy(t.nodes[key] as unknown as NoodleServerObject, NoodleServerProxyHandler);
 
     if (mainkey in t.methods)
       return (
@@ -87,8 +83,8 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServer> = {
         }; // return with an empty callable function
       }
       debug(`Create ${mainkey} node in ${t.path.at(-1)}`);
-      const node = (t.nodes[mainkey] = new NoodleServerObject(t.clientname, target.path.slice().concat(key), t.lw3server) as any);
-      return new Proxy(obj2fun(node), NoodleServerProxyHandler);
+      const node = (t.nodes[mainkey] = new NoodleServerObject(t.clientname, t.path.slice().concat(key), t.lw3server) as any);
+      return new Proxy(node, NoodleServerProxyHandler);
     } else {
       // request a non-existing property. Creating it with empty string as default
       const prop = (t.properties[mainkey] = { value: '', manual: '', rw: true });
@@ -96,8 +92,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServer> = {
     }
   },
 
-  set(target: NoodleServer, key: string, value: string | object): boolean {
-    const t: NoodleServerObject = target as unknown as NoodleServerObject;
+  set(t: NoodleServerObject, key: string, value: string | object): boolean {
     let $ = false;
     if (key[0] === '$') {
       $ = true;
@@ -140,7 +135,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServer> = {
     if (isNode && !castedToProperty) {
       // node
       key = key.replace('__node__', '');
-      t.nodes[key] = new NoodleServerObject(t.clientname, target.path.slice().concat(key), t.lw3server) as any;
+      t.nodes[key] = new NoodleServerObject(t.clientname, t.path.slice().concat(key), t.lw3server) as any;
     } else if (isMethod && !castedToProperty) {
       // method
       key = key.replace('__method__', '');
@@ -176,6 +171,33 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServer> = {
     }
     return true;
   },
+
+  deleteProperty(t: NoodleServerObject, key: string): boolean {
+    if (key in t.nodes) {
+      delete t.nodes[key];
+      debug(`node ${key} deleted`);
+      return true;
+    } else if (key in t.properties) {
+      delete t.properties[key];
+      debug(`property ${key} deleted`);
+      return true;
+    } else if (key in t.methods) {
+      delete t.methods[key];
+      debug(`method ${key} deleted`);
+      return true;
+    } else return false;
+  },
+
+  ownKeys(t: NoodleServerObject) {
+    return [...Object.keys(t.nodes).sort(), ...Object.keys(t.properties).sort(), ...Object.keys(t.methods).sort()];
+  },
+
+  getOwnPropertyDescriptor(target: NoodleServerObject) {
+    return {
+      enumerable: true,
+      configurable: true,
+    };
+  },
 };
 
 export const noodleServer = (options: number | Lw3ServerOptions = 6107): NoodleServer => {
@@ -194,5 +216,5 @@ export const noodleServer = (options: number | Lw3ServerOptions = 6107): NoodleS
   const clientObj = server.root;
 
   debug('Noodle server created');
-  return new Proxy(obj2fun(clientObj), NoodleServerProxyHandler) as unknown as NoodleServer;
+  return new Proxy(clientObj, NoodleServerProxyHandler) as unknown as NoodleServer;
 };

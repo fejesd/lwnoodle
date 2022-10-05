@@ -13,7 +13,7 @@ beforeEach(() => {
   debug('=======' + expect.getState().currentTestName + '=======');
   debug('');
   const clientObj: NoodleServerObject = new NoodleServerObject();
-  root = new Proxy(obj2fun(clientObj), NoodleServerProxyHandler) as unknown as NoodleServer;
+  root = new Proxy(clientObj, NoodleServerProxyHandler) as unknown as NoodleServer;
 });
 
 test('creating properties automatically', () => {
@@ -144,4 +144,37 @@ test('using methods', () => {
     },
   } as any;
   expect(root.PATH.TO.NODE.subtr(3, 1)).toBe(2);
+});
+
+test('delete nodes, properties, methods', () => {
+  root.PATH.TO.NODE.SOMETHING.Prop = 1 as any;
+  root.PATH.TO.NODE.SOMETHING.meth = (() => {
+    return 1;
+  }) as any;
+  expect(root.PATH.TO.NODE.$SOMETHING.$Prop).toBe(1);
+  delete root.PATH.TO.NODE.SOMETHING.Prop;
+  expect(root.PATH.TO.NODE.$SOMETHING.$Prop).toBe(undefined);
+
+  expect(root.PATH.TO.NODE.$SOMETHING.$meth()).toBe(1);
+  delete root.PATH.TO.NODE.SOMETHING.meth;
+  expect(root.PATH.TO.NODE.$SOMETHING.$meth).toBe(undefined);
+
+  delete root.PATH.TO.NODE.SOMETHING;
+  expect(root.PATH.TO.NODE.$SOMETHING).toBe(undefined);
+});
+
+test('getting keys shall return subnodes, properties, methods', () => {
+  root.PATH.TO.NODE.SOMETHING.Prop = 1 as any;
+  root.PATH.TO.NODE.SOMETHING.Test = 2 as any;
+  root.PATH.TO.NODE.SOMETHING.meth = (() => {
+    return 1;
+  }) as any;
+  root.PATH.TO.NODE.SOMETHING.apply = (() => {
+    return 2;
+  }) as any;
+  root.PATH.TO.NODE.SOMETHING.SUBNODE1.Ab = 1 as any;
+  root.PATH.TO.NODE.SOMETHING.SUBNODE3.Ab = 2 as any;
+  root.PATH.TO.NODE.SOMETHING.SUBNODE2.Ab = 3 as any;
+
+  expect(Object.keys(root.PATH.TO.NODE.SOMETHING)).toStrictEqual(['SUBNODE1', 'SUBNODE2', 'SUBNODE3', 'Prop', 'Test', 'apply', 'meth']);
 });
