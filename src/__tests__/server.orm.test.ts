@@ -163,7 +163,7 @@ test('delete nodes, properties, methods', () => {
   expect(root.PATH.TO.NODE.$SOMETHING).toBe(undefined);
 });
 
-test('getting keys shall return subnodes, properties, methods', () => {
+test('Object.keys shall return subnodes, properties, methods', () => {
   root.PATH.TO.NODE.SOMETHING.Prop = 1 as any;
   root.PATH.TO.NODE.SOMETHING.Test = 2 as any;
   root.PATH.TO.NODE.SOMETHING.meth = (() => {
@@ -177,4 +177,64 @@ test('getting keys shall return subnodes, properties, methods', () => {
   root.PATH.TO.NODE.SOMETHING.SUBNODE2.Ab = 3 as any;
 
   expect(Object.keys(root.PATH.TO.NODE.SOMETHING)).toStrictEqual(['SUBNODE1', 'SUBNODE2', 'SUBNODE3', 'Prop', 'Test', 'apply', 'meth']);
+});
+
+test('setting and getting property manuals', () => {
+  root.PATH.TO.NODE.Prop1 = 'somevalue' as any;
+  root.PATH.TO.NODE.Prop1__man__ = 'desc' as any;
+
+  root.PATH.TO.NODE.Prop2__man__ = 'desc' as any;
+  root.PATH.TO.NODE.Prop2 = 'somevalue' as any;
+
+  root.PATH.TO.NODE.Prop3 = { value: 'somevalue', manual: 'desc' } as any;
+
+  root.PATH.TO.NODE.prop4__prop__man__ = 'desc' as any;
+  root.PATH.TO.NODE.prop4__prop = 'somevalue' as any;
+
+  expect(Object.keys(root.PATH.TO.NODE)).toStrictEqual(['Prop1', 'Prop2', 'Prop3', 'prop4']);
+
+  expect(root.PATH.TO.NODE.Prop1).toBe('somevalue');
+  expect(root.PATH.TO.NODE.Prop1__man__).toBe('desc');
+
+  expect(root.PATH.TO.NODE.Prop2).toBe('somevalue');
+  expect(root.PATH.TO.NODE.Prop2__man__).toBe('desc');
+
+  expect(root.PATH.TO.NODE.Prop3).toBe('somevalue');
+  expect(root.PATH.TO.NODE.Prop3__man__).toBe('desc');
+
+  expect(root.PATH.TO.NODE.prop4).toBe('somevalue');
+  expect(root.PATH.TO.NODE.prop4__man__).toBe('desc');
+
+  expect(root.PATH.TO.NODE.prop4__prop__).toBe('somevalue');
+  expect(root.PATH.TO.NODE.prop4__prop__man__).toBe('desc');
+});
+
+test('setting and getting property rw flag', () => {
+  root.PATH.TO.NODE.Prop1 = 'somevalue' as any;
+  root.PATH.TO.NODE.Prop1__rw__ = false as any;
+
+  root.PATH.TO.NODE.Prop2__rw__ = undefined as any;
+  root.PATH.TO.NODE.Prop2 = 'somevalue' as any;
+
+  root.PATH.TO.NODE.Prop3 = { value: 'somevalue', rw: false } as any;
+
+  root.PATH.TO.NODE.prop4__prop__rw__ = 0 as any;
+  root.PATH.TO.NODE.prop4__prop = 'somevalue' as any;
+
+  expect(Object.keys(root.PATH.TO.NODE)).toStrictEqual(['Prop1', 'Prop2', 'Prop3', 'prop4']);
+
+  expect(root.PATH.TO.NODE.Prop1).toBe('somevalue');
+  expect(root.PATH.TO.NODE.Prop1__rw__).toBe(false);
+
+  expect(root.PATH.TO.NODE.Prop2).toBe('somevalue');
+  expect(root.PATH.TO.NODE.Prop2__rw__).toBe(false);
+
+  expect(root.PATH.TO.NODE.Prop3).toBe('somevalue');
+  expect(root.PATH.TO.NODE.Prop3__rw__).toBe(false);
+
+  expect(root.PATH.TO.NODE.prop4).toBe('somevalue');
+  expect(root.PATH.TO.NODE.prop4__rw__).toBe(false);
+
+  expect(root.PATH.TO.NODE.prop4__prop__).toBe('somevalue');
+  expect(root.PATH.TO.NODE.prop4__prop__rw__).toBe(false);
 });

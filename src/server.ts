@@ -50,34 +50,44 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       $ = true;
       key = key.substring(1);
     }
-    const mainkey = key.split('__')[0];
+    const keyparts = key.split('__');
+    const mainkey = keyparts[0];
+    let keymodifier = keyparts.length > 2 ? keyparts[1] : '';
+    if (mainkey in t.nodes) return new Proxy(t.nodes[key] as unknown as NoodleServerObject, NoodleServerProxyHandler);
+    if (keymodifier === 'man' || keymodifier === 'rw') keymodifier = '';
+    const isManual = keyparts[keyparts.length - 2] === 'man';
+    const isRw = keyparts[keyparts.length - 2] === 'rw';
     if (mainkey in t.properties) {
       const property = t.properties[mainkey];
+      if (isManual) return property.manual;
+      if (isRw) return property.rw;
       if (property.getter) return property.getter.bind(property)();
       else return convertValue(property.value);
     }
-    if (mainkey in t.nodes) return new Proxy(t.nodes[key] as unknown as NoodleServerObject, NoodleServerProxyHandler);
 
-    if (mainkey in t.methods)
+    if (mainkey in t.methods) {
+      if (isManual) return t.methods[mainkey].manual;
       return (
         t.methods[mainkey].fun ||
         ((...args: string[]) => {
           /* */
         })
       );
+    }
 
     // todo: methods
 
     if ($) return undefined; // keys marked with $ sign are not auto-created
     // a new object shall be created
-    const castedToProperty = key.indexOf('__prop__') !== -1;
-    const isNode = key === key.toUpperCase() || key.indexOf('__node__') !== -1;
-    const isMethod = key[0] === key[0].toLowerCase() || key.indexOf('__method__') !== -1;
+    const castedToProperty = keymodifier === 'prop';
+    const isNode = key === key.toUpperCase() || keymodifier === 'node';
+    const isMethod = key[0] === key[0].toLowerCase() || keymodifier === '__method__';
     if ((isNode || isMethod) && !castedToProperty) {
       // request a non existing node/method. Creating it.
       if (isMethod) {
         // request a non existing method.
         t.methods[mainkey] = { manual: '' };
+        if (isManual) return '';
         return (...args: string[]) => {
           /* */
         }; // return with an empty callable function
@@ -88,6 +98,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
     } else {
       // request a non-existing property. Creating it with empty string as default
       const prop = (t.properties[mainkey] = { value: '', manual: '', rw: true });
+      if (isRw) return true;
       return '';
     }
   },
@@ -98,75 +109,102 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       $ = true;
       key = key.substring(1);
     }
-    if (key in t.properties) {
+    const keyparts = key.split('__');
+    const mainkey = keyparts[0];
+    let keymodifier = keyparts.length > 2 ? keyparts[1] : '';
+    const isManual = keyparts[keyparts.length - 2] === 'man';
+    const isRw = keyparts[keyparts.length - 2] === 'rw';
+    if (keymodifier === 'man' || keymodifier === 'rw') keymodifier = '';
+    if (mainkey in t.properties && (keymodifier === '' || keymodifier === 'prop')) {
       // update an existing property value
       if (typeof value === 'object') {
+        if (isRw || isManual) return false;
         // update to a new Property object
-        if ('value' in value) t.properties[key].value = value['value' as keyof object]; // todo: type checks?
-        if ('manual' in value) t.properties[key].manual = value['manual' as keyof object];
-        if ('rw' in value) t.properties[key].rw = value['rw' as keyof object];
-        if ('setter' in value) t.properties[key].setter = value['setter' as keyof object];
-        if ('getter' in value) t.properties[key].getter = value['getter' as keyof object];
+        if ('value' in value) t.properties[mainkey].value = value['value' as keyof object]; // todo: type checks?
+        if ('manual' in value) t.properties[mainkey].manual = value['manual' as keyof object];
+        if ('rw' in value) t.properties[mainkey].rw = value['rw' as keyof object];
+        if ('setter' in value) t.properties[mainkey].setter = value['setter' as keyof object];
+        if ('getter' in value) t.properties[mainkey].getter = value['getter' as keyof object];
       } else {
         // update with a primitive type
-        if (t.properties[key].setter) t.properties[key].setter?.bind(t.properties[key])(value);
-        else t.properties[key].value = value.toString();
+        if (isManual) t.properties[mainkey].manual = value.toString();
+        else if (isRw) t.properties[mainkey].rw = value ? true : false;
+        else if (t.properties[mainkey].setter) t.properties[mainkey].setter?.bind(t.properties[mainkey])(value);
+        else t.properties[mainkey].value = value.toString();
       }
       return true;
-    } else if (key in t.nodes) {
+    } else if (mainkey in t.nodes && (keymodifier === '' || keymodifier === 'node')) {
       if (typeof value !== 'object') return false;
       t.nodes[key] = value as Noodle; // todo: type check somehow? Is the passed object really a noodle?
       return true;
-    } else if (key in t.methods) {
+    } else if (key in t.methods && (keymodifier === '' || keymodifier === 'method')) {
       if (typeof value === 'object') {
+        if (isManual || isRw) return false;
         // update to a new Method object
         if ('manual' in value) t.methods[key].manual = value['manual' as keyof object]; // todo: type checks?
         if ('fun' in value) t.methods[key].fun = value['fun' as keyof object];
       } else if (typeof value === 'function') {
+        if (isManual || isRw) return false;
         // update with a function type
         t.methods[key].fun = value;
-      } else return false;
+      } else {
+        if (isManual) t.methods[key].manual = value.toString();
+        else return false;
+      }
     }
     if ($) return false;
-    const castedToProperty = key.indexOf('__prop__') !== -1;
-    const isNode = key === key.toUpperCase() || key.indexOf('__node__') !== -1;
-    const isMethod = key[0] === key[0].toLowerCase() || key.indexOf('__method__') !== -1;
+    const castedToProperty = keymodifier === 'prop';
+    const isNode = key === key.toUpperCase() || keymodifier === 'node';
+    const isMethod = key[0] === key[0].toLowerCase() || keymodifier === 'method';
     // create new object on the fly
     if (isNode && !castedToProperty) {
       // node
-      key = key.replace('__node__', '');
-      t.nodes[key] = new NoodleServerObject(t.clientname, t.path.slice().concat(key), t.lw3server) as any;
+      if (isManual || isRw) return false;
+      t.nodes[mainkey] = new NoodleServerObject(t.clientname, t.path.slice().concat(mainkey), t.lw3server) as any;
     } else if (isMethod && !castedToProperty) {
       // method
-      key = key.replace('__method__', '');
-      t.methods[key] = { manual: '' };
+      if (isRw) return false;
+      t.methods[mainkey] = { manual: '' };
       if (typeof value === 'object') {
+        if (isManual) return false;
         // update to a new Method object
-        debug(`Create a new method from object ${key}`);
-        if ('manual' in value) t.methods[key].manual = value['manual' as keyof object]; // todo: type checks?
-        if ('fun' in value) t.methods[key].fun = value['fun' as keyof object];
+        debug(`Create a new method from object ${mainkey}`);
+        if ('manual' in value) t.methods[mainkey].manual = value['manual' as keyof object]; // todo: type checks?
+        if ('fun' in value) t.methods[mainkey].fun = value['fun' as keyof object];
       } else if (typeof value === 'function') {
+        if (isManual) return false;
         // update with a function type
-        debug(`Create a new method from function ${key}`);
+        debug(`Create a new method from function ${mainkey}`);
         t.methods[key].fun = value;
       } else {
-        debug(`Create a new method failed: ${key}`);
+        if (isManual) {
+          t.methods[mainkey].manual = value.toString();
+          return true;
+        }
+        debug(`Create a new method failed: ${mainkey}`);
         return false;
       }
     } else {
       // property
-      key = key.replace('__prop__', '');
-      t.properties[key] = { value: '', manual: '', rw: true };
+
+      t.properties[mainkey] = { value: '', manual: '', rw: true };
       if (typeof value === 'object') {
+        if (isManual || isRw) return false;
         debug('Create new property from object');
-        if ('value' in value) t.properties[key].value = value['value' as keyof object]; // todo: type checks?
-        if ('manual' in value) t.properties[key].manual = value['manual' as keyof object];
-        if ('rw' in value) t.properties[key].rw = value['rw' as keyof object];
-        if ('setter' in value) t.properties[key].setter = value['setter' as keyof object];
-        if ('getter' in value) t.properties[key].getter = value['getter' as keyof object];
+        if ('value' in value) t.properties[mainkey].value = value['value' as keyof object]; // todo: type checks?
+        if ('manual' in value) t.properties[mainkey].manual = value['manual' as keyof object];
+        if ('rw' in value) t.properties[mainkey].rw = value['rw' as keyof object];
+        if ('setter' in value) t.properties[mainkey].setter = value['setter' as keyof object];
+        if ('getter' in value) t.properties[mainkey].getter = value['getter' as keyof object];
       } else {
-        debug(`Create ${key} property from data in ${t.path.at(-1)}`);
-        t.properties[key].value = value.toString();
+        if (isManual) {
+          t.properties[mainkey].manual = value.toString();
+        } else if (isRw) {
+          t.properties[mainkey].rw = value ? true : false;
+        } else {
+          debug(`Create ${mainkey} property from data in ${t.path.at(-1)}`);
+          t.properties[mainkey].value = value.toString();
+        }
       }
     }
     return true;
