@@ -74,9 +74,6 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
         })
       );
     }
-
-    // todo: methods
-
     if ($) return undefined; // keys marked with $ sign are not auto-created
     // a new object shall be created
     const castedToProperty = keymodifier === 'prop';
@@ -137,20 +134,21 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       if (typeof value !== 'object') return false;
       t.nodes[key] = value as Noodle; // todo: type check somehow? Is the passed object really a noodle?
       return true;
-    } else if (key in t.methods && (keymodifier === '' || keymodifier === 'method')) {
+    } else if (mainkey in t.methods && (keymodifier === '' || keymodifier === 'method')) {
       if (typeof value === 'object') {
         if (isManual || isRw) return false;
         // update to a new Method object
-        if ('manual' in value) t.methods[key].manual = value['manual' as keyof object]; // todo: type checks?
-        if ('fun' in value) t.methods[key].fun = value['fun' as keyof object];
+        if ('manual' in value) t.methods[mainkey].manual = value['manual' as keyof object]; // todo: type checks?
+        if ('fun' in value) t.methods[mainkey].fun = value['fun' as keyof object];
       } else if (typeof value === 'function') {
         if (isManual || isRw) return false;
         // update with a function type
-        t.methods[key].fun = value;
+        t.methods[mainkey].fun = value;
       } else {
-        if (isManual) t.methods[key].manual = value.toString();
+        if (isManual) t.methods[mainkey].manual = value.toString();
         else return false;
       }
+      return true;
     }
     if ($) return false;
     const castedToProperty = keymodifier === 'prop';
@@ -175,7 +173,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
         if (isManual) return false;
         // update with a function type
         debug(`Create a new method from function ${mainkey}`);
-        t.methods[key].fun = value;
+        t.methods[mainkey].fun = value;
       } else {
         if (isManual) {
           t.methods[mainkey].manual = value.toString();

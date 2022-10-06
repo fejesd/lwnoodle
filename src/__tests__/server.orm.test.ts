@@ -238,3 +238,44 @@ test('setting and getting property rw flag', () => {
   expect(root.PATH.TO.NODE.prop4__prop__).toBe('somevalue');
   expect(root.PATH.TO.NODE.prop4__prop__rw__).toBe(false);
 });
+
+test('setting and getting method manuals', () => {
+  root.PATH.TO.NODE.meth1 = (() => {
+    return 42;
+  }) as any;
+  root.PATH.TO.NODE.meth1__man__ = 'desc' as any;
+
+  root.PATH.TO.NODE.meth2__man__ = 'desc' as any;
+  root.PATH.TO.NODE.meth2 = (() => {
+    return 42;
+  }) as any;
+
+  root.PATH.TO.NODE.meth3 = {
+    fun: () => {
+      return 42;
+    },
+    manual: 'desc',
+  } as any;
+
+  root.PATH.TO.NODE.Meth4__method__man__ = 'desc' as any;
+  root.PATH.TO.NODE.Meth4__method__ = (() => {
+    return 42;
+  }) as any;
+
+  expect(Object.keys(root.PATH.TO.NODE)).toStrictEqual(['Meth4', 'meth1', 'meth2', 'meth3']);
+
+  expect(root.PATH.TO.NODE.meth1()).toBe(42);
+  expect(root.PATH.TO.NODE.meth1__man__).toBe('desc');
+
+  expect(root.PATH.TO.NODE.meth2()).toBe(42);
+  expect(root.PATH.TO.NODE.meth2__man__).toBe('desc');
+
+  expect(root.PATH.TO.NODE.meth3()).toBe(42);
+  expect(root.PATH.TO.NODE.meth3__man__).toBe('desc');
+
+  expect(root.PATH.TO.NODE.Meth4()).toBe(42);
+  expect(root.PATH.TO.NODE.Meth4__man__).toBe('desc');
+
+  expect(root.PATH.TO.NODE.Meth4__method__()).toBe(42);
+  expect(root.PATH.TO.NODE.Meth4__method__man__).toBe('desc');
+});
