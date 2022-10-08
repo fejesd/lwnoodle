@@ -279,3 +279,15 @@ test('setting and getting method manuals', () => {
   expect(root.PATH.TO.NODE.Meth4__method__()).toBe(42);
   expect(root.PATH.TO.NODE.Meth4__method__man__).toBe('desc');
 });
+
+test('node converting to JSON', () => {
+  root.NODE.Alfa = 'Test' as any;
+  root.NODE.Beta = 'Hello' as any;
+  root.NODE.method = (() => {
+    return 42;
+  }) as any;
+  root.NODE.ONE.Omega = 'Ohm' as any;
+  root.NODE.TWO.Zeta = 'zeta' as any;
+
+  expect(JSON.parse(JSON.stringify(root))).toStrictEqual({ NODE: { Alfa: 'Test', Beta: 'Hello', ONE: { Omega: 'Ohm' }, TWO: { Zeta: 'zeta' } } });
+});

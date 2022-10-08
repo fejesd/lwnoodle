@@ -43,8 +43,26 @@ export class NoodleServerObject {
   }
 }
 
+function NoodelServerObject2Json(t: NoodleServerObject) {
+  const ret = {} as any;
+  Object.keys(t.properties).forEach((element) => {
+    ret[element] = t.properties[element].value;
+  });
+  Object.keys(t.nodes).forEach((element) => {
+    debug(element);
+    debug(t.nodes[element]);
+    debug(t.nodes[element].toJSON);
+    ret[element] = NoodelServerObject2Json(t.nodes[element] as unknown as NoodleServerObject);
+  });
+  return ret;
+}
+
 export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
   get(t: NoodleServerObject, key: string): any {
+    if (key === 'toJSON') {
+      const ret = NoodelServerObject2Json(t);
+      return () => ret;
+    }
     let $ = false;
     if (key[0] === '$') {
       $ = true;
