@@ -293,28 +293,54 @@ test('node converting to JSON', () => {
 });
 
 test('Creating node tree by JSON assignment', () => {
-  root.PATH = { NODE: { Alfa: 'Test', Beta: 'Hello', ONE: { Omega: 'Ohm' }, TWO: { Zeta: 'zeta' } } } as any;
+  root.PATH = {
+    NODE: {
+      Alfa: 'Test',
+      Beta: 'Hello',
+      ONE: { Omega: 'Ohm' },
+      TWO: { Zeta: 'zeta' },
+      testmethod: () => {
+        return 42;
+      },
+    },
+  } as any;
 
   expect(root.PATH.NODE.Alfa).toBe('Test');
   expect(root.PATH.NODE.Beta).toBe('Hello');
   expect(root.PATH.NODE.ONE.Omega).toBe('Ohm');
   expect(root.PATH.NODE.TWO.Zeta).toBe('zeta');
+  expect(root.PATH.NODE.testmethod()).toBe(42);
 
-  root.PATH.NODE = { ONE: { Theta: 'theta' }, THREE: { Delta: 'delta' } } as any;
+  root.PATH.NODE = {
+    ONE: { Theta: 'theta' },
+    THREE: { Delta: 'delta' },
+    testmethod: () => {
+      return 43;
+    },
+  } as any;
 
   expect(root.PATH.NODE.ONE.Omega).toBe('Ohm');
   expect(root.PATH.NODE.ONE.Theta).toBe('theta');
   expect(root.PATH.NODE.TWO.Zeta).toBe('zeta');
   expect(root.PATH.NODE.THREE.Delta).toBe('delta');
+  expect(root.PATH.NODE.testmethod()).toBe(43);
 });
 
 test('setJSON call will extend the current node with the json', () => {
   root.PartNumber = 12345 as any;
   root.TEST.PATH.Number = 42 as any;
-  root.setJSON({ ProductName: 'TestElek', NODE: { Alfa: 'Test', Beta: 'Hello', ONE: { Omega: 'Ohm' }, TWO: { Zeta: 'zeta' } } });
+  root.setJSON({
+    ProductName: 'TestElek',
+    NODE: { Alfa: 'Test', Beta: 'Hello', ONE: { Omega: 'Ohm' }, TWO: { Zeta: 'zeta' } },
+    testmethod: () => {
+      return 43;
+    },
+  });
+
   expect(root.PartNumber).toBe(12345);
   expect(root.TEST.PATH.Number).toBe(42);
   expect(root.ProductName).toBe('TestElek');
+  expect(root.testmethod()).toBe(43);
   expect(root.NODE.Alfa).toBe('Test');
   expect(root.NODE.Beta).toBe('Hello');
   expect(root.NODE.ONE.Omega).toBe('Ohm');

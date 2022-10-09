@@ -89,8 +89,13 @@ function Json2NoodleServerObject(json: any, t: NoodleServerObject) {
         Json2NoodleServerObject(json[element as keyof typeof json], t.nodes[element] as unknown as NoodleServerObject);
       }
     } else if (keytype === 'function') {
-      // method
-      // todo
+      if (element in t.methods) {
+        t.methods[element].fun = json[element as keyof typeof json];
+      } else {
+        // create new method
+        // todo: a node or property exists with this name?
+        t.methods[element] = { fun: json[element as keyof typeof json], manual: '' };
+      }
     }
   });
 }
