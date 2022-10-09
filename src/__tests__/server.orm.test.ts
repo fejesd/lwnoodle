@@ -326,10 +326,10 @@ test('Creating node tree by JSON assignment', () => {
   expect(root.PATH.NODE.testmethod()).toBe(43);
 });
 
-test('setJSON call will extend the current node with the json', () => {
+test('fromJSON call will extend the current node with the json', () => {
   root.PartNumber = 12345 as any;
   root.TEST.PATH.Number = 42 as any;
-  root.setJSON({
+  root.fromJSON({
     ProductName: 'TestElek',
     NODE: { Alfa: 'Test', Beta: 'Hello', ONE: { Omega: 'Ohm' }, TWO: { Zeta: 'zeta' } },
     testmethod: () => {
