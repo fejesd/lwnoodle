@@ -43,10 +43,14 @@ export class NoodleServerObject {
   }
 }
 
+/**
+ * Internal helper function to convert a Noodle Server object to JSON
+ */
 function NoodelServerObject2Json(t: NoodleServerObject) {
   const ret = {} as any;
   Object.keys(t.properties).forEach((element) => {
-    ret[element] = t.properties[element].value;
+    if (t.properties[element].getter) ret[element] = t.properties[element].getter?.bind(t.properties[element])();
+    else ret[element] = t.properties[element].value;
   });
   Object.keys(t.nodes).forEach((element) => {
     debug(element);
@@ -57,11 +61,49 @@ function NoodelServerObject2Json(t: NoodleServerObject) {
   return ret;
 }
 
+/**
+ * Internal helper function to convert a Json object to Noodle server
+ */
+function Json2NoodleServerObject(json: any, t: NoodleServerObject) {
+  Object.keys(json).forEach((element) => {
+    const keytype = typeof json[element as keyof typeof json];
+    if (keytype === 'string' || keytype === 'number' || keytype === 'boolean') {
+      // property
+      if (element in t.properties) {
+        // existing property
+        if (t.properties[element].setter) t.properties[element].setter?.bind(t.properties[element])(json[element as keyof typeof json].toString());
+        else t.properties[element].value = json[element as keyof typeof json].toString();
+      } else {
+        // create new property
+        // todo: a node or method exists with this name?
+        t.properties[element] = { rw: false, manual: '', value: json[element as keyof typeof json].toString() };
+      }
+    } else if (keytype === 'object') {
+      // node
+      if (element in t.nodes) {
+        // existing node
+        Json2NoodleServerObject(json[element as keyof typeof json], t.nodes[element] as unknown as NoodleServerObject);
+      } else {
+        // todo: a method or property exists with that name
+        t.nodes[element] = new NoodleServerObject(t.clientname, t.path.slice().concat(element), t.lw3server) as unknown as Noodle;
+        Json2NoodleServerObject(json[element as keyof typeof json], t.nodes[element] as unknown as NoodleServerObject);
+      }
+    } else if (keytype === 'function') {
+      // method
+      // todo
+    }
+  });
+}
+
 export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
   get(t: NoodleServerObject, key: string): any {
     if (key === 'toJSON') {
       const ret = NoodelServerObject2Json(t);
       return () => ret;
+    } else if (key === 'setJSON') {
+      return (json: any) => {
+        Json2NoodleServerObject(json, t);
+      };
     }
     let $ = false;
     if (key[0] === '$') {
@@ -150,7 +192,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       return true;
     } else if (mainkey in t.nodes && (keymodifier === '' || keymodifier === 'node')) {
       if (typeof value !== 'object') return false;
-      t.nodes[key] = value as Noodle; // todo: type check somehow? Is the passed object really a noodle?
+      Json2NoodleServerObject(value, t.nodes[mainkey] as unknown as NoodleServerObject);
       return true;
     } else if (mainkey in t.methods && (keymodifier === '' || keymodifier === 'method')) {
       if (typeof value === 'object') {
@@ -177,6 +219,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       // node
       if (isManual || isRw) return false;
       t.nodes[mainkey] = new NoodleServerObject(t.clientname, t.path.slice().concat(mainkey), t.lw3server) as any;
+      Json2NoodleServerObject(value, t.nodes[mainkey] as unknown as NoodleServerObject);
     } else if (isMethod && !castedToProperty) {
       // method
       if (isRw) return false;
