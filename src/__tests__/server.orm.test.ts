@@ -346,3 +346,30 @@ test('fromJSON call will extend the current node with the json', () => {
   expect(root.NODE.ONE.Omega).toBe('Ohm');
   expect(root.NODE.TWO.Zeta).toBe('zeta');
 });
+
+test('get all subnodes by __nodes__() call', () => {
+  root.A.Test = 1 as any;
+  root.C.Test = 3 as any;
+  root.B.Test = 2 as any;
+  expect(root.__nodes__()).toStrictEqual(['A', 'B', 'C']);
+});
+
+test('get all methods by __methods__() call', () => {
+  root.atest = (() => {
+    return 1;
+  }) as any;
+  root.ctest = (() => {
+    return 2;
+  }) as any;
+  root.btest = (() => {
+    return 3;
+  }) as any;
+  expect(root.__methods__()).toStrictEqual(['atest', 'btest', 'ctest']);
+});
+
+test('get all properties by __properties__() call', () => {
+  root.Atest = 'A' as any;
+  root.Ctest = 42 as any;
+  root.Btest = true as any;
+  expect(Object.keys(root.__properties__()).sort()).toStrictEqual(['Atest', 'Btest', 'Ctest']);
+});

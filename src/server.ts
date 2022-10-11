@@ -110,6 +110,18 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       return (json: any) => {
         t.fromJSON(json);
       };
+    } else if (key === '__nodes__') {
+      return () => {
+        return Object.keys(t.nodes).sort();
+      };
+    } else if (key === '__methods__') {
+      return () => {
+        return Object.keys(t.methods).sort();
+      };
+    } else if (key === '__properties__') {
+      return () => {
+        return t.properties;
+      };
     }
     let $ = false;
     if (key[0] === '$') {
