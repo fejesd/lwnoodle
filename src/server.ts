@@ -120,11 +120,16 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
         return Object.keys(t.methods).sort();
       };
     } else if (key === '__properties__') {
-      return () => {
-        return t.properties;
+      return (pkey: string | undefined) => {
+        if (pkey) return t.properties[pkey];
+        else return t.properties;
       };
     } else if (key === 'server') {
       return t.lw3server?.server;
+    } else if (key === '__close__') {
+      return () => {
+        t.lw3server?.close();
+      };
     }
     let $ = false;
     if (key[0] === '$') {
@@ -198,7 +203,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       if (typeof value === 'object') {
         if (isRw || isManual) return false;
         // update to a new Property object
-        if ('value' in value) t.properties[mainkey].value = value['value' as keyof object]; // todo: type checks?
+        if ('value' in value) t.properties[mainkey].value = (value['value' as keyof object] as any).toString(); // todo: type checks?
         if ('manual' in value) t.properties[mainkey].manual = value['manual' as keyof object];
         if ('rw' in value) t.properties[mainkey].rw = value['rw' as keyof object];
         if ('setter' in value) t.properties[mainkey].setter = value['setter' as keyof object];
@@ -271,7 +276,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       if (typeof value === 'object') {
         if (isManual || isRw) return false;
         debug('Create new property from object');
-        if ('value' in value) t.properties[mainkey].value = value['value' as keyof object]; // todo: type checks?
+        if ('value' in value) t.properties[mainkey].value = (value['value' as keyof object] as any).toString(); // todo: type checks?
         if ('manual' in value) t.properties[mainkey].manual = value['manual' as keyof object];
         if ('rw' in value) t.properties[mainkey].rw = value['rw' as keyof object];
         if ('setter' in value) t.properties[mainkey].setter = value['setter' as keyof object];

@@ -53,6 +53,8 @@ export type NoodleServer = Noodle & {
   path: string[];
   /** return an Lw3Server */
   server: Lw3Server;
+  /** Shutdown the server, close listening ports, close all clients */
+  __close__(): void;
   /** return all subnodes */
   __nodes__(): string[];
   /** the connection object. It is not intended for external use */

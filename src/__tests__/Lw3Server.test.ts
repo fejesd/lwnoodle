@@ -28,7 +28,7 @@ beforeAll(async () => {
 afterAll(async () => {
   client.close();
   await waitForAnEvent(server.server, 'close', debug);
-  server.close();
+  server.__close__();
   debug('wait server to close');
   await waitForAnEvent(server.server, 'serverclose', debug);
   debug('server closed');
@@ -62,7 +62,28 @@ test('get subnodes', async () => {
   server.PATH.TO.MY.NODE.TESTA.Ab = 1 as any;
   server.PATH.TO.MY.NODE.TESTC.Ab = 3 as any;
   server.PATH.TO.MY.NODE.TESTD.Ab = 4 as any;
+
   client.write('0001#GET /PATH/TO/MY/NODE\n');
   await waitForAnEvent(client, 'frame', debug, 6);
   expect(receivedMessage).toStrictEqual(['{0001', 'n- /PATH/TO/MY/NODE/TESTA', 'n- /PATH/TO/MY/NODE/TESTB', 'n- /PATH/TO/MY/NODE/TESTC', 'n- /PATH/TO/MY/NODE/TESTD', '}']);
+});
+
+test('get a single property', async () => {
+  server.PATH.TO.MY.NODE.TESTB.Aa = 'hello\nworld' as any;
+  receivedMessage = [];
+  client.write('0001#GET /PATH/TO/MY/NODE/TESTB.Aa\n');
+  await waitForAnEvent(client, 'frame', debug, 3);
+  expect(receivedMessage).toStrictEqual(['{0001', 'pw /PATH/TO/MY/NODE/TESTB.Aa=hello\\nworld', '}']);
+
+  server.PATH.TO.MY.NODE.TESTB.Ab = 2 as any;
+  receivedMessage = [];
+  client.write('0002#GET /PATH/TO/MY/NODE/TESTB.Ab\n');
+  await waitForAnEvent(client, 'frame', debug, 3);
+  expect(receivedMessage).toStrictEqual(['{0002', 'pw /PATH/TO/MY/NODE/TESTB.Ab=2', '}']);
+
+  server.PATH.TO.MY.NODE.TESTB.Ac = { rw: false, value: true } as any;
+  receivedMessage = [];
+  client.write('GET /PATH/TO/MY/NODE/TESTB.Ac\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['pr /PATH/TO/MY/NODE/TESTB.Ac=true']);
 });

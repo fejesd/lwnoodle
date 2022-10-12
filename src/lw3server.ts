@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 import Debug from 'debug';
 import * as _ from 'lodash';
 import { Noodle, NoodleServer } from './noodle';
+import { escape, unescape } from './escaping';
 
 const debug = Debug('Lw3Server');
 
@@ -146,41 +147,52 @@ export class Lw3Server extends EventEmitter {
       command = msg.substring(0, firstSpace);
       args = msg.substring(firstSpace + 1);
     }
-    if (command === 'GET') {
-      /**
-       *  GET command has three variant:
-       *  GET /SOME/PATH   - get subnodes
-       *  GET /SOME/PATH.* - get all props and methods
-       *  GET /SOME/PATH.Prop - get a single prop
-       */
-      const dotPosition = args.indexOf('.');
-      if (dotPosition === -1) {
-        // GET /SOME/PATH   - get subnodes
-        const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
-        if (!node) response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound);
-        const subnodes: string[] = node?.__nodes__();
-        subnodes?.forEach((element) => {
-          response += 'n- ' + args + '/' + element + '\n';
-        });
+    do {
+      if (command === 'GET') {
+        /**
+         *  GET command has three variant:
+         *  GET /SOME/PATH   - get subnodes
+         *  GET /SOME/PATH.* - get all props and methods
+         *  GET /SOME/PATH.Prop - get a single prop
+         */
+        const dotPosition = args.indexOf('.');
+        if (dotPosition === -1) {
+          // GET /SOME/PATH   - get subnodes
+          const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
+          if (!node) response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound);
+          const subnodes: string[] = node?.__nodes__();
+          subnodes?.forEach((element) => {
+            response += 'n- ' + args + '/' + element + '\n';
+          });
+        } else {
+          const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
+          const propName = args.substring(dotPosition + 1);
+          if (!node) {
+            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound);
+            break;
+          }
+          debug(propName);
+          const prop: any = node.__properties__(propName);
+          response += 'p' + (prop.rw ? 'w' : 'r') + ' ' + args + '=' + escape(prop.value) + '\n';
+        }
+        /* todo */
+      } else if (command === 'SET') {
+        /* todo */
+      } else if (command === 'CALL') {
+        /* todo */
+      } else if (command === 'MAN') {
+        /* todo */
+      } else if (command === 'SET') {
+        /* todo */
+      } else if (command === 'OPEN') {
+        /* todo */
+      } else if (command === 'CLOSE') {
+        /* todo */
+      } else {
+        response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
       }
-      /* todo */
-    } else if (command === 'SET') {
-      /* todo */
-    } else if (command === 'CALL') {
-      /* todo */
-    } else if (command === 'MAN') {
-      /* todo */
-    } else if (command === 'SET') {
-      /* todo */
-    } else if (command === 'OPEN') {
-      /* todo */
-    } else if (command === 'CLOSE') {
-      /* todo */
-    } else {
-      response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
-    }
+    } while (false);
     if (signature) response += '}\n';
-    else response += '\n';
     this.server.write(socketId, response);
   }
 
