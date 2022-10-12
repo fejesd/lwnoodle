@@ -1,11 +1,11 @@
-import { Lw3Server, Lw3ErrorCodes } from '../lw3server';
+import { Lw3Server } from '../lw3server';
 import { TcpClientConnection } from '../tcpclientconnection';
 import Debug from 'debug';
 import { sleep, waitForAnEvent, waitLinesRcv } from './helpers';
 import { extendWith, isArguments } from 'lodash';
 import { Lw3Client } from '../lw3client';
 import { noodleServer } from '../server';
-import { NoodleServer } from '../noodle';
+import { Lw3ErrorCodes, NoodleServer } from '../noodle';
 const debug = Debug('Test');
 
 Debug.enable('TcpClientConnection,TcpServerConnection,Test,Lw3Server,NoodleServer');
@@ -86,4 +86,14 @@ test('get a single property', async () => {
   client.write('GET /PATH/TO/MY/NODE/TESTB.Ac\n');
   await waitForAnEvent(client, 'frame', debug, 1);
   expect(receivedMessage).toStrictEqual(['pr /PATH/TO/MY/NODE/TESTB.Ac=true']);
+});
+
+test('get all property', async () => {
+  server.PATH.TO.MY.NODE.TESTB.Aa = 'hello\nworld' as any;
+  server.PATH.TO.MY.NODE.TESTB.Ab = 2 as any;
+  server.PATH.TO.MY.NODE.TESTB.Ac = { rw: false, value: true } as any;
+
+  client.write('GET /PATH/TO/MY/NODE/TESTB.*\n');
+  await waitForAnEvent(client, 'frame', debug, 3);
+  expect(receivedMessage).toStrictEqual(['pw /PATH/TO/MY/NODE/TESTB.Aa=hello\\nworld', 'pw /PATH/TO/MY/NODE/TESTB.Ab=2', 'pr /PATH/TO/MY/NODE/TESTB.Ac=true']);
 });

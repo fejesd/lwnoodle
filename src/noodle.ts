@@ -45,6 +45,34 @@ export type NoodleClient = Noodle & {
   lw3client: Lw3Client;
 };
 
+export enum Lw3ErrorCodes {
+  Lw3ErrorCodes_None = 0,
+  Lw3ErrorCodes_Syntax = 1,
+  Lw3ErrorCodes_NotFound = 2,
+  Lw3ErrorCodes_AlreadyExists = 3,
+  Lw3ErrorCodes_InvalidValue = 4,
+  Lw3ErrorCodes_IllegalParamCount = 5,
+  Lw3ErrorCodes_IllegalOperation = 6,
+  Lw3ErrorCodes_AccessDenied = 7,
+  Lw3ErrorCodes_Timeout = 8,
+  Lw3ErrorCodes_CommandTooLong = 9,
+  Lw3ErrorCodes_InternalError = 10,
+  Lw3ErrorCodes_NotImplemented = 11,
+  Lw3ErrorCodes_NodeDisabled = 12,
+}
+export interface Property {
+  value: string;
+  manual: string;
+  rw: boolean;
+  setter?: (value: string) => Lw3ErrorCodes /* setter function will be called if available instead of setting value directly */;
+  getter?: () => string /* getter function will override the value string */;
+}
+
+export interface Method {
+  manual: string;
+  fun?: (args: any[]) => string;
+}
+
 export type NoodleServer = Noodle & {
   (): any;
   [name: string]: NoodleServer;
@@ -57,6 +85,12 @@ export type NoodleServer = Noodle & {
   __close__(): void;
   /** return all subnodes */
   __nodes__(): string[];
+  /** return all methods */
+  __methods__(): string[];
+  /** return all properties */
+  __properties__(): { [name: string]: Property };
+  /** return single property */
+  __properties__(s: string): Property;
   /** the connection object. It is not intended for external use */
   lw3server: Lw3Server;
 };

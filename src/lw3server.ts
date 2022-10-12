@@ -3,7 +3,7 @@ import { TcpServerConnection } from './tcpserverconnection';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
 import * as _ from 'lodash';
-import { Noodle, NoodleServer } from './noodle';
+import { Lw3ErrorCodes, Noodle, NoodleServer } from './noodle';
 import { escape, unescape } from './escaping';
 
 const debug = Debug('Lw3Server');
@@ -27,22 +27,6 @@ export interface Lw3Server {
   on(event: 'serverclose', listener: () => void): this;
   on(event: 'connect' | 'close', listener: (socketId: number) => void): this;
   on(event: 'socketerror', listener: (socketId: number, e: Error) => void): this;
-}
-
-export enum Lw3ErrorCodes {
-  Lw3ErrorCodes_None = 0,
-  Lw3ErrorCodes_Syntax = 1,
-  Lw3ErrorCodes_NotFound = 2,
-  Lw3ErrorCodes_AlreadyExists = 3,
-  Lw3ErrorCodes_InvalidValue = 4,
-  Lw3ErrorCodes_IllegalParamCount = 5,
-  Lw3ErrorCodes_IllegalOperation = 6,
-  Lw3ErrorCodes_AccessDenied = 7,
-  Lw3ErrorCodes_Timeout = 8,
-  Lw3ErrorCodes_CommandTooLong = 9,
-  Lw3ErrorCodes_InternalError = 10,
-  Lw3ErrorCodes_NotImplemented = 11,
-  Lw3ErrorCodes_NodeDisabled = 12,
 }
 
 /**
@@ -171,9 +155,18 @@ export class Lw3Server extends EventEmitter {
             response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound);
             break;
           }
-          debug(propName);
-          const prop: any = node.__properties__(propName);
-          response += 'p' + (prop.rw ? 'w' : 'r') + ' ' + args + '=' + escape(prop.value) + '\n';
+          if (propName === '*') {
+            // getting all property
+            const props = node.__properties__();
+            const nodename = args.substring(0, dotPosition);
+            Object.keys(props).sort().forEach((propname) => {
+              response += 'p' + (props[propname].rw ? 'w' : 'r') + ' ' + nodename + '.' + propname + '=' + escape(props[propname].value) + '\n';
+            });
+          } else {
+            // getting single property
+            const prop = node.__properties__(propName);
+            response += 'p' + (prop.rw ? 'w' : 'r') + ' ' + args + '=' + escape(prop.value) + '\n';
+          }
         }
         /* todo */
       } else if (command === 'SET') {

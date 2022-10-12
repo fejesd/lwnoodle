@@ -1,22 +1,9 @@
-import { Noodle, NoodleServer } from './noodle';
-import { Lw3Server, Lw3ServerOptions, Lw3ErrorCodes } from './lw3server';
+import { Method, Noodle, NoodleServer, Property } from './noodle';
+import { Lw3Server, Lw3ServerOptions } from './lw3server';
 import { convertValue, obj2fun } from './common';
 import Debug from 'debug';
 import { findLastKey } from 'lodash';
 const debug = Debug('NoodleServer');
-
-export interface Property {
-  value: string;
-  manual: string;
-  rw: boolean;
-  setter?: (value: string) => Lw3ErrorCodes /* setter function will be called if available instead of setting value directly */;
-  getter?: () => string /* getter function will override the value string */;
-}
-
-export interface Method {
-  manual: string;
-  fun?: (args: any[]) => string;
-}
 
 /**
  * NoodleServerObject represents a single node stored in local memory.
@@ -54,10 +41,7 @@ export class NoodleServerObject {
       if (this.properties[element].getter) ret[element] = this.properties[element].getter?.bind(this.properties[element])();
       else ret[element] = this.properties[element].value;
     });
-    Object.keys(this.nodes).forEach((element) => {
-      debug(element);
-      debug(this.nodes[element]);
-      debug(this.nodes[element].toJSON);
+    Object.keys(this.nodes).forEach((element) => {      
       ret[element] = (this.nodes[element] as unknown as NoodleServerObject).toJSON();
     });
     return ret;
@@ -102,8 +86,7 @@ export class NoodleServerObject {
 }
 
 export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
-  get(t: NoodleServerObject, key: string): any {
-    debug('GET ' + key);
+  get(t: NoodleServerObject, key: string): any {    
     if (key === 'toJSON') {
       const ret = t.toJSON();
       return () => ret;
