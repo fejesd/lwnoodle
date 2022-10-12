@@ -51,6 +51,10 @@ export type NoodleServer = Noodle & {
 } & {
   /** parts of the path. It is not intended for external use */
   path: string[];
+  /** return an Lw3Server */
+  server: Lw3Server;
+  /** return all subnodes */
+  __nodes__(): string[];
   /** the connection object. It is not intended for external use */
   lw3server: Lw3Server;
 };

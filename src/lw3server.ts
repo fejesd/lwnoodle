@@ -1,8 +1,9 @@
-import { NoodleServerObject } from './server';
+import { NoodleServerObject, NoodleServerProxyHandler } from './server';
 import { TcpServerConnection } from './tcpserverconnection';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
 import * as _ from 'lodash';
+import { Noodle, NoodleServer } from './noodle';
 
 const debug = Debug('Lw3Server');
 
@@ -48,7 +49,7 @@ export enum Lw3ErrorCodes {
  */
 export class Lw3Server extends EventEmitter {
   /** root node */
-  root: NoodleServerObject;
+  root: NoodleServer;
   /** session data */
   sessions: { [socketId: number]: Lw3ServerSession };
   server: TcpServerConnection;
@@ -126,7 +127,7 @@ export class Lw3Server extends EventEmitter {
     });
     this.server.on('frame', this.lineRcv.bind(this));
 
-    this.root = new NoodleServerObject(options.name || 'default', [], this);
+    this.root = new Proxy(new NoodleServerObject(options.name || 'default', [], this), NoodleServerProxyHandler) as unknown as NoodleServer;
   }
 
   private async lineRcv(socketId: number, msg: string) {
@@ -138,10 +139,47 @@ export class Lw3Server extends EventEmitter {
       response = '{' + msg.substring(0, 4) + '\n';
       msg = msg.substring(5);
     } else signature = false;
-
-    response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax);
-
-    if (signature) response += '\n}\n';
+    const firstSpace = msg.indexOf(' ');
+    let command = '';
+    let args = '';
+    if (firstSpace !== -1) {
+      command = msg.substring(0, firstSpace);
+      args = msg.substring(firstSpace + 1);
+    }
+    if (command === 'GET') {
+      /**
+       *  GET command has three variant:
+       *  GET /SOME/PATH   - get subnodes
+       *  GET /SOME/PATH.* - get all props and methods
+       *  GET /SOME/PATH.Prop - get a single prop
+       */
+      const dotPosition = args.indexOf('.');
+      if (dotPosition === -1) {
+        // GET /SOME/PATH   - get subnodes
+        const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
+        if (!node) response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound);
+        const subnodes: string[] = node?.__nodes__();
+        subnodes?.forEach((element) => {
+          response += 'n- ' + args + '/' + element + '\n';
+        });
+      }
+      /* todo */
+    } else if (command === 'SET') {
+      /* todo */
+    } else if (command === 'CALL') {
+      /* todo */
+    } else if (command === 'MAN') {
+      /* todo */
+    } else if (command === 'SET') {
+      /* todo */
+    } else if (command === 'OPEN') {
+      /* todo */
+    } else if (command === 'CLOSE') {
+      /* todo */
+    } else {
+      response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+    }
+    if (signature) response += '}\n';
     else response += '\n';
     this.server.write(socketId, response);
   }
@@ -149,5 +187,17 @@ export class Lw3Server extends EventEmitter {
   close() {
     this.server.close();
     debug(`Server closed`);
+  }
+
+  private getNode(s: string): Noodle | undefined {
+    const path = s.split('/');
+    if (path[0]) return undefined;
+    let node: any = this.root;
+    for (let i = 1; i < path.length; i++) {
+      if (!path[i]) return undefined;
+      node = node[('$' + path[i]) as keyof NoodleServerObject];
+      if (node === undefined) return undefined;
+    }
+    return node;
   }
 }

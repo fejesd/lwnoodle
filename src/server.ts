@@ -103,6 +103,7 @@ export class NoodleServerObject {
 
 export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
   get(t: NoodleServerObject, key: string): any {
+    debug('GET ' + key);
     if (key === 'toJSON') {
       const ret = t.toJSON();
       return () => ret;
@@ -122,6 +123,8 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       return () => {
         return t.properties;
       };
+    } else if (key === 'server') {
+      return t.lw3server?.server;
     }
     let $ = false;
     if (key[0] === '$') {
@@ -328,8 +331,7 @@ export const noodleServer = (options: number | Lw3ServerOptions = 6107): NoodleS
   }
 
   const server = new Lw3Server(opts);
-  const clientObj = server.root;
 
   debug('Noodle server created');
-  return new Proxy(clientObj, NoodleServerProxyHandler) as unknown as NoodleServer;
+  return server.root;
 };
