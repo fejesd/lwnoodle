@@ -41,7 +41,7 @@ export class NoodleServerObject {
       if (this.properties[element].getter) ret[element] = this.properties[element].getter?.bind(this.properties[element])();
       else ret[element] = this.properties[element].value;
     });
-    Object.keys(this.nodes).forEach((element) => {      
+    Object.keys(this.nodes).forEach((element) => {
       ret[element] = (this.nodes[element] as unknown as NoodleServerObject).toJSON();
     });
     return ret;
@@ -86,7 +86,7 @@ export class NoodleServerObject {
 }
 
 export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
-  get(t: NoodleServerObject, key: string): any {    
+  get(t: NoodleServerObject, key: string): any {
     if (key === 'toJSON') {
       const ret = t.toJSON();
       return () => ret;

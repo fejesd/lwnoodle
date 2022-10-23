@@ -159,9 +159,11 @@ export class Lw3Server extends EventEmitter {
             // getting all property
             const props = node.__properties__();
             const nodename = args.substring(0, dotPosition);
-            Object.keys(props).sort().forEach((propname) => {
-              response += 'p' + (props[propname].rw ? 'w' : 'r') + ' ' + nodename + '.' + propname + '=' + escape(props[propname].value) + '\n';
-            });
+            Object.keys(props)
+              .sort()
+              .forEach((propname) => {
+                response += 'p' + (props[propname].rw ? 'w' : 'r') + ' ' + nodename + '.' + propname + '=' + escape(props[propname].value) + '\n';
+              });
           } else {
             // getting single property
             const prop = node.__properties__(propName);
