@@ -57,6 +57,10 @@ test('syntax error response', async () => {
   expect(receivedMessage).toStrictEqual(['{0001', '-E GETTER / %E001:Syntax error', '}']);
 });
 
+//
+// GET
+//
+
 test('get subnodes', async () => {
   server.PATH.TO.MY.NODE.TESTB.Ab = 2 as any;
   server.PATH.TO.MY.NODE.TESTA.Ab = 1 as any;
@@ -96,4 +100,116 @@ test('get all property', async () => {
   client.write('GET /PATH/TO/MY/NODE/TESTB.*\n');
   await waitForAnEvent(client, 'frame', debug, 3);
   expect(receivedMessage).toStrictEqual(['pw /PATH/TO/MY/NODE/TESTB.Aa=hello\\nworld', 'pw /PATH/TO/MY/NODE/TESTB.Ab=2', 'pr /PATH/TO/MY/NODE/TESTB.Ac=true']);
+});
+
+//
+// SET
+//
+
+test('set a property - string', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  expect(server.PATH.TO.MY.NODE.TestProperty).toBe('hello\nworld');
+
+  client.write('SET /PATH/TO/MY/NODE.TestProperty=sample\\nvalue\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['pw /PATH/TO/MY/NODE.TestProperty=sample\\nvalue']);
+
+  expect(server.PATH.TO.MY.NODE.TestProperty).toBe('sample\nvalue');
+});
+
+test('set a property - booelan', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  expect(server.PATH.TO.MY.NODE.TestProperty).toBe('hello\nworld');
+
+  client.write('SET /PATH/TO/MY/NODE.TestProperty=true\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['pw /PATH/TO/MY/NODE.TestProperty=true']);
+
+  expect(server.PATH.TO.MY.NODE.TestProperty).toBe(true);
+
+  receivedMessage = [];
+  client.write('SET /PATH/TO/MY/NODE.TestProperty=false\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['pw /PATH/TO/MY/NODE.TestProperty=false']);
+
+  expect(server.PATH.TO.MY.NODE.TestProperty).toBe(false);
+});
+
+test('set a property - number', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  expect(server.PATH.TO.MY.NODE.TestProperty).toBe('hello\nworld');
+
+  client.write('SET /PATH/TO/MY/NODE.TestProperty=42\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['pw /PATH/TO/MY/NODE.TestProperty=42']);
+
+  expect(server.PATH.TO.MY.NODE.TestProperty).toBe(42);
+});
+
+test('set a property - using setter function', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = {
+    value: 'hello\nworld',
+    setter(s: string) {
+      this.value = s.toUpperCase();
+    },
+  } as any;
+
+  expect(server.PATH.TO.MY.NODE.TestProperty).toBe('hello\nworld');
+
+  client.write('SET /PATH/TO/MY/NODE.TestProperty=sample\\nvalue\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['pw /PATH/TO/MY/NODE.TestProperty=SAMPLE\\nVALUE']);
+
+  expect(server.PATH.TO.MY.NODE.TestProperty).toBe('SAMPLE\nVALUE');
+});
+
+test('set a property - non-existent node', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = {
+    value: 'hello\nworld',
+    setter(s: string) {
+      this.value = s.toUpperCase();
+    },
+  } as any;
+
+  client.write('SET /PATH/TO/YOUR/NODE.TestProperty=sample\\nvalue\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E SET /PATH/TO/YOUR/NODE.TestProperty=sample\\nvalue %E002:Not exists']);
+});
+
+test('set a property - non-existent property', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = {
+    value: 'hello\nworld',
+    setter(s: string) {
+      this.value = s.toUpperCase();
+    },
+  } as any;
+
+  client.write('SET /PATH/TO/MY/NODE.Property=sample\\nvalue\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E SET /PATH/TO/MY/NODE.Property=sample\\nvalue %E002:Not exists']);
+});
+
+test('set a property - read only property', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  server.PATH.TO.MY.NODE.TestProperty__rw__ = false as any;
+
+  client.write('SET /PATH/TO/MY/NODE.TestProperty=sample\\nvalue\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E SET /PATH/TO/MY/NODE.TestProperty=sample\\nvalue %E007:Access denied']);
+});
+
+test('set a property - syntax error 1', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+
+  client.write('SET /PATH/TO/MY/NODETestProperty=sample\\nvalue\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E SET /PATH/TO/MY/NODETestProperty=sample\\nvalue %E001:Syntax error']);
+});
+
+test('set a property - syntax error 2', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+
+  client.write('SET NODETestProperty\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E SET NODETestProperty %E001:Syntax error']);
 });

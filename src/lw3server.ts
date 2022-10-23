@@ -3,7 +3,7 @@ import { TcpServerConnection } from './tcpserverconnection';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
 import * as _ from 'lodash';
-import { Lw3ErrorCodes, Noodle, NoodleServer } from './noodle';
+import { Lw3ErrorCodes, Noodle, NoodleServer, Property } from './noodle';
 import { escape, unescape } from './escaping';
 
 const debug = Debug('Lw3Server');
@@ -143,7 +143,7 @@ export class Lw3Server extends EventEmitter {
         if (dotPosition === -1) {
           // GET /SOME/PATH   - get subnodes
           const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
-          if (!node) response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound);
+          if (!node) response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
           const subnodes: string[] = node?.__nodes__();
           subnodes?.forEach((element) => {
             response += 'n- ' + args + '/' + element + '\n';
@@ -170,9 +170,32 @@ export class Lw3Server extends EventEmitter {
             response += 'p' + (prop.rw ? 'w' : 'r') + ' ' + args + '=' + escape(prop.value) + '\n';
           }
         }
-        /* todo */
       } else if (command === 'SET') {
-        /* todo */
+        const dotPosition = args.indexOf('.');
+        const eqPosition = args.indexOf('=');
+        if (dotPosition === -1 || eqPosition === -1) {
+          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+          break;
+        }
+        const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
+        const propName = args.substring(dotPosition + 1, eqPosition);
+        const value = args.substring(eqPosition + 1);
+        if (!node) {
+          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+          break;
+        }
+        let property = node.__properties__(propName);
+        if (property === undefined) {
+          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+          break;
+        }
+        if (!(property as Property).rw) {
+          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_AccessDenied) + '\n';
+          break;
+        }
+        (node as any)[propName + '__prop__'] = unescape(value);
+        property = node.__properties__(propName);
+        response += 'p' + (property.rw ? 'w' : 'r') + ' ' + args.substring(0, eqPosition) + '=' + escape(property.value) + '\n';
       } else if (command === 'CALL') {
         /* todo */
       } else if (command === 'MAN') {
