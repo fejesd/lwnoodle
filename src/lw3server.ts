@@ -3,8 +3,9 @@ import { TcpServerConnection } from './tcpserverconnection';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
 import * as _ from 'lodash';
-import { Lw3ErrorCodes, Noodle, NoodleServer, Property } from './noodle';
+import { Lw3ErrorCodes, Lw3Error, Noodle, NoodleServer, Property } from './noodle';
 import { escape, unescape } from './escaping';
+import { convertValue } from './common';
 
 const debug = Debug('Lw3Server');
 
@@ -40,39 +41,8 @@ export class Lw3Server extends EventEmitter {
   server: TcpServerConnection;
   options: Lw3ServerOptions;
 
-  static getErrorCodeString(errorcode: Lw3ErrorCodes): string {
-    switch (errorcode) {
-      case Lw3ErrorCodes.Lw3ErrorCodes_Syntax:
-        return 'Syntax error';
-      case Lw3ErrorCodes.Lw3ErrorCodes_NotFound:
-        return 'Not exists';
-      case Lw3ErrorCodes.Lw3ErrorCodes_AlreadyExists:
-        return 'Already exists';
-      case Lw3ErrorCodes.Lw3ErrorCodes_InvalidValue:
-        return 'Invalid value';
-      case Lw3ErrorCodes.Lw3ErrorCodes_IllegalParamCount:
-        return 'Illegal parameter count';
-      case Lw3ErrorCodes.Lw3ErrorCodes_IllegalOperation:
-        return 'Illegal operation';
-      case Lw3ErrorCodes.Lw3ErrorCodes_AccessDenied:
-        return 'Access denied';
-      case Lw3ErrorCodes.Lw3ErrorCodes_Timeout:
-        return 'Timeout';
-      case Lw3ErrorCodes.Lw3ErrorCodes_CommandTooLong:
-        return 'Command too long';
-      case Lw3ErrorCodes.Lw3ErrorCodes_InternalError:
-        return 'Internal error';
-      case Lw3ErrorCodes.Lw3ErrorCodes_NotImplemented:
-        return 'Not implemented';
-      case Lw3ErrorCodes.Lw3ErrorCodes_NodeDisabled:
-        return 'Node disabled or standby mode active';
-      default:
-        return 'Unknown error';
-    }
-  }
-
   static getErrorHeader(errorcode: Lw3ErrorCodes): string {
-    return '%E' + ('00' + (errorcode as number).toString()).substr(-3) + ':' + Lw3Server.getErrorCodeString(errorcode);
+    return '%E' + ('00' + (errorcode as number).toString()).substr(-3) + ':' + Lw3Error.getErrorCodeString(errorcode);
   }
 
   constructor(options: Lw3ServerOptions) {
@@ -179,6 +149,9 @@ export class Lw3Server extends EventEmitter {
           }
         }
       } else if (command === 'SET') {
+        /**
+         * SET command syntax:  SET /NODE/PATH.Property=value
+         */
         const dotPosition = args.indexOf('.');
         const eqPosition = args.indexOf('=');
         if (dotPosition === -1 || eqPosition === -1) {
@@ -205,7 +178,42 @@ export class Lw3Server extends EventEmitter {
         property = node.__properties__(propName);
         response += 'p' + (property.rw ? 'w' : 'r') + ' ' + args.substring(0, eqPosition) + '=' + escape(property.value) + '\n';
       } else if (command === 'CALL') {
-        /* todo */
+        /**
+         * CALL command syntax:  CALL /NODE/PATH:method(param1,param2,...)
+         */
+        const semicolonPosition = args.indexOf(':');
+        const bracketPosition = args.indexOf('(');
+        if (semicolonPosition === -1 || bracketPosition <= semicolonPosition || args[args.length - 1] !== ')') {
+          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+          break;
+        }
+        const node: NoodleServer | undefined = this.getNode(args.substring(0, semicolonPosition)) as NoodleServer;
+        if (!node) {
+          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+          break;
+        }
+        const methodname = args.substring(semicolonPosition + 1, bracketPosition);
+        const methodarguments = args
+          .substring(bracketPosition + 1, args.length - 1)
+          .split(',')
+          .map((x) => convertValue(unescape(x)));
+        if (node.__methods__().indexOf(methodname) === -1) {
+          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+          break;
+        }
+        try {
+          debug(methodarguments);
+          const resp = await node[methodname + '__method__'](...methodarguments);
+          if (!resp) response += 'mO ' + args.substring(0, bracketPosition) + '\n';
+          else response += 'mO ' + args.substring(0, bracketPosition) + '=' + resp.toString() + '\n';
+        } catch (e) {
+          if ((e as Lw3Error).lw3Error) {
+            response += 'mE ' + args.substring(0, bracketPosition) + ' ' + Lw3Server.getErrorHeader((e as Lw3Error).lw3Error) + '\n';
+          } else {
+            response +=
+              'mE ' + args.substring(0, bracketPosition) + '=' + escape((e as Error).message) + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_InternalError) + '\n';
+          }
+        }
       } else if (command === 'MAN') {
         /* todo */
       } else if (command === 'SET') {

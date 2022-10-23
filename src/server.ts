@@ -136,6 +136,18 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
 
     if (mainkey in t.methods) {
       if (isManual) return t.methods[mainkey].manual;
+      return ((f: ((args: any[]) => string) | undefined) => {
+        if (f === undefined)
+          return async (...args: string[]) => {
+            /* */
+          } /* do nothing */;
+        else if (f.constructor.name === 'AsyncFunction') return f /* return with the async function */;
+        else
+          return async (...args: any) => {
+            return f.apply(this, args);
+          }; /* wrap into async function */
+      })(t.methods[mainkey].fun);
+
       return (
         t.methods[mainkey].fun ||
         ((...args: string[]) => {

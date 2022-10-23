@@ -5,7 +5,7 @@ import { sleep, waitForAnEvent, waitLinesRcv } from './helpers';
 import { extendWith, isArguments } from 'lodash';
 import { Lw3Client } from '../lw3client';
 import { noodleServer } from '../server';
-import { Lw3ErrorCodes, NoodleServer } from '../noodle';
+import { Lw3Error, Lw3ErrorCodes, NoodleServer } from '../noodle';
 const debug = Debug('Test');
 
 Debug.enable('TcpClientConnection,TcpServerConnection,Test,Lw3Server,NoodleServer');
@@ -73,7 +73,7 @@ test('get - subnodes', async () => {
 });
 
 test('get - subnodes (empty)', async () => {
-  server.PATH.TO.YOUR.NODE.Ab = 2 as any;  
+  server.PATH.TO.YOUR.NODE.Ab = 2 as any;
 
   client.write('0001#GET /PATH/TO/YOUR/NODE\n');
   await waitForAnEvent(client, 'frame', debug, 2);
@@ -133,8 +133,6 @@ test('get - non existing property', async () => {
   await waitForAnEvent(client, 'frame', debug, 1);
   expect(receivedMessage).toStrictEqual(['-E GET /PATH/TO/MY/NODE.Property %E002:Not exists']);
 });
-
-
 
 //
 // SET
@@ -246,4 +244,38 @@ test('set a property - syntax error 2', async () => {
   client.write('SET NODETestProperty\n');
   await waitForAnEvent(client, 'frame', debug, 1);
   expect(receivedMessage).toStrictEqual(['-E SET NODETestProperty %E001:Syntax error']);
+});
+
+//
+// CALL
+//
+
+test('call a method - number parameters', async () => {
+  server.PATH.TO.MY.NODE.subtract = ((a: number, b: number) => {
+    return a - b;
+  }) as any;
+
+  client.write('CALL /PATH/TO/MY/NODE:subtract(10,2)\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['mO /PATH/TO/MY/NODE:subtract=8']);
+});
+
+test('call a method - lw3 error', async () => {
+  server.PATH.TO.MY.NODE.subtract = ((a: number, b: number) => {
+    throw new Lw3Error(Lw3ErrorCodes.Lw3ErrorCodes_InvalidValue);
+  }) as any;
+
+  client.write('CALL /PATH/TO/MY/NODE:subtract(10,2)\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['mE /PATH/TO/MY/NODE:subtract %E004:Invalid value']);
+});
+
+test('call a method - generic error', async () => {
+  server.PATH.TO.MY.NODE.subtract = ((a: number, b: number) => {
+    throw new Error('something terrible has happened');
+  }) as any;
+
+  client.write('CALL /PATH/TO/MY/NODE:subtract(10,2)\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['mE /PATH/TO/MY/NODE:subtract=something terrible has happened %E010:Internal error']);
 });

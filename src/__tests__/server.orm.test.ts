@@ -117,36 +117,36 @@ test('use property getters', () => {
   expect(root.ProductName__prop__).toBe('testtest');
 });
 
-test('using methods', () => {
+test('using methods', async () => {
   const fun = (a: number, b: number) => {
     return a + b;
   };
   root.PATH.TO.NODE.add = fun as any;
 
-  expect(root.PATH.TO.NODE.add).toBe(fun);
-  expect(root.PATH.TO.NODE.add(1, 2)).toBe(3);
+  expect(typeof root.PATH.TO.NODE.add).toBe('function');
+  expect(await root.PATH.TO.NODE.add(1, 2)).toBe(3);
 
   root.PATH.TO.NODE.add = ((a: number, b: number) => {
     return 2 * a + 2 * b;
   }) as any;
-  expect(root.PATH.TO.NODE.add(1, 2)).toBe(6);
+  expect(await root.PATH.TO.NODE.add(1, 2)).toBe(6);
 
   root.PATH.TO.NODE.add = {
-    fun: (a: number, b: number) => {
+    fun: async (a: number, b: number) => {
       return 3 * a + 3 * b;
     },
   } as any;
-  expect(root.PATH.TO.NODE.add(1, 2)).toBe(9);
+  expect(await root.PATH.TO.NODE.add(1, 2)).toBe(9);
 
   root.PATH.TO.NODE.subtr = {
     fun: (a: number, b: number) => {
       return a - b;
     },
   } as any;
-  expect(root.PATH.TO.NODE.subtr(3, 1)).toBe(2);
+  expect(await root.PATH.TO.NODE.subtr(3, 1)).toBe(2);
 });
 
-test('delete nodes, properties, methods', () => {
+test('delete nodes, properties, methods', async () => {
   root.PATH.TO.NODE.SOMETHING.Prop = 1 as any;
   root.PATH.TO.NODE.SOMETHING.meth = (() => {
     return 1;
@@ -155,7 +155,7 @@ test('delete nodes, properties, methods', () => {
   delete root.PATH.TO.NODE.SOMETHING.Prop;
   expect(root.PATH.TO.NODE.$SOMETHING.$Prop).toBe(undefined);
 
-  expect(root.PATH.TO.NODE.$SOMETHING.$meth()).toBe(1);
+  expect(await root.PATH.TO.NODE.$SOMETHING.$meth()).toBe(1);
   delete root.PATH.TO.NODE.SOMETHING.meth;
   expect(root.PATH.TO.NODE.$SOMETHING.$meth).toBe(undefined);
 
@@ -239,7 +239,7 @@ test('setting and getting property rw flag', () => {
   expect(root.PATH.TO.NODE.prop4__prop__rw__).toBe(false);
 });
 
-test('setting and getting method manuals', () => {
+test('setting and getting method manuals', async () => {
   root.PATH.TO.NODE.meth1 = (() => {
     return 42;
   }) as any;
@@ -264,19 +264,19 @@ test('setting and getting method manuals', () => {
 
   expect(Object.keys(root.PATH.TO.NODE)).toStrictEqual(['Meth4', 'meth1', 'meth2', 'meth3']);
 
-  expect(root.PATH.TO.NODE.meth1()).toBe(42);
+  expect(await root.PATH.TO.NODE.meth1()).toBe(42);
   expect(root.PATH.TO.NODE.meth1__man__).toBe('desc');
 
-  expect(root.PATH.TO.NODE.meth2()).toBe(42);
+  expect(await root.PATH.TO.NODE.meth2()).toBe(42);
   expect(root.PATH.TO.NODE.meth2__man__).toBe('desc');
 
-  expect(root.PATH.TO.NODE.meth3()).toBe(42);
+  expect(await root.PATH.TO.NODE.meth3()).toBe(42);
   expect(root.PATH.TO.NODE.meth3__man__).toBe('desc');
 
-  expect(root.PATH.TO.NODE.Meth4()).toBe(42);
+  expect(await root.PATH.TO.NODE.Meth4()).toBe(42);
   expect(root.PATH.TO.NODE.Meth4__man__).toBe('desc');
 
-  expect(root.PATH.TO.NODE.Meth4__method__()).toBe(42);
+  expect(await root.PATH.TO.NODE.Meth4__method__()).toBe(42);
   expect(root.PATH.TO.NODE.Meth4__method__man__).toBe('desc');
 });
 
@@ -292,7 +292,7 @@ test('node converting to JSON', () => {
   expect(JSON.parse(JSON.stringify(root))).toStrictEqual({ NODE: { Alfa: 'Test', Beta: 'Hello', ONE: { Omega: 'Ohm' }, TWO: { Zeta: 'zeta' } } });
 });
 
-test('Creating node tree by JSON assignment', () => {
+test('Creating node tree by JSON assignment', async () => {
   root.PATH = {
     NODE: {
       Alfa: 'Test',
@@ -309,7 +309,7 @@ test('Creating node tree by JSON assignment', () => {
   expect(root.PATH.NODE.Beta).toBe('Hello');
   expect(root.PATH.NODE.ONE.Omega).toBe('Ohm');
   expect(root.PATH.NODE.TWO.Zeta).toBe('zeta');
-  expect(root.PATH.NODE.testmethod()).toBe(42);
+  expect(await root.PATH.NODE.testmethod()).toBe(42);
 
   root.PATH.NODE = {
     ONE: { Theta: 'theta' },
@@ -323,10 +323,10 @@ test('Creating node tree by JSON assignment', () => {
   expect(root.PATH.NODE.ONE.Theta).toBe('theta');
   expect(root.PATH.NODE.TWO.Zeta).toBe('zeta');
   expect(root.PATH.NODE.THREE.Delta).toBe('delta');
-  expect(root.PATH.NODE.testmethod()).toBe(43);
+  expect(await root.PATH.NODE.testmethod()).toBe(43);
 });
 
-test('fromJSON call will extend the current node with the json', () => {
+test('fromJSON call will extend the current node with the json', async () => {
   root.PartNumber = 12345 as any;
   root.TEST.PATH.Number = 42 as any;
   root.fromJSON({
@@ -340,7 +340,7 @@ test('fromJSON call will extend the current node with the json', () => {
   expect(root.PartNumber).toBe(12345);
   expect(root.TEST.PATH.Number).toBe(42);
   expect(root.ProductName).toBe('TestElek');
-  expect(root.testmethod()).toBe(43);
+  expect(await root.testmethod()).toBe(43);
   expect(root.NODE.Alfa).toBe('Test');
   expect(root.NODE.Beta).toBe('Hello');
   expect(root.NODE.ONE.Omega).toBe('Ohm');

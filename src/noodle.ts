@@ -60,6 +60,46 @@ export enum Lw3ErrorCodes {
   Lw3ErrorCodes_NotImplemented = 11,
   Lw3ErrorCodes_NodeDisabled = 12,
 }
+
+export class Lw3Error extends Error {
+  lw3Error: Lw3ErrorCodes;
+  constructor(error: Lw3ErrorCodes) {
+    super(Lw3Error.getErrorCodeString(error));
+    this.lw3Error = error;
+  }
+
+  static getErrorCodeString(errorcode: Lw3ErrorCodes): string {
+    switch (errorcode) {
+      case Lw3ErrorCodes.Lw3ErrorCodes_Syntax:
+        return 'Syntax error';
+      case Lw3ErrorCodes.Lw3ErrorCodes_NotFound:
+        return 'Not exists';
+      case Lw3ErrorCodes.Lw3ErrorCodes_AlreadyExists:
+        return 'Already exists';
+      case Lw3ErrorCodes.Lw3ErrorCodes_InvalidValue:
+        return 'Invalid value';
+      case Lw3ErrorCodes.Lw3ErrorCodes_IllegalParamCount:
+        return 'Illegal parameter count';
+      case Lw3ErrorCodes.Lw3ErrorCodes_IllegalOperation:
+        return 'Illegal operation';
+      case Lw3ErrorCodes.Lw3ErrorCodes_AccessDenied:
+        return 'Access denied';
+      case Lw3ErrorCodes.Lw3ErrorCodes_Timeout:
+        return 'Timeout';
+      case Lw3ErrorCodes.Lw3ErrorCodes_CommandTooLong:
+        return 'Command too long';
+      case Lw3ErrorCodes.Lw3ErrorCodes_InternalError:
+        return 'Internal error';
+      case Lw3ErrorCodes.Lw3ErrorCodes_NotImplemented:
+        return 'Not implemented';
+      case Lw3ErrorCodes.Lw3ErrorCodes_NodeDisabled:
+        return 'Node disabled or standby mode active';
+      default:
+        return 'Unknown error';
+    }
+  }
+}
+
 export interface Property {
   value: string;
   manual: string;
