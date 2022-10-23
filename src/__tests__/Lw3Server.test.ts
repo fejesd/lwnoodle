@@ -61,7 +61,7 @@ test('syntax error response', async () => {
 // GET
 //
 
-test('get subnodes', async () => {
+test('get - subnodes', async () => {
   server.PATH.TO.MY.NODE.TESTB.Ab = 2 as any;
   server.PATH.TO.MY.NODE.TESTA.Ab = 1 as any;
   server.PATH.TO.MY.NODE.TESTC.Ab = 3 as any;
@@ -72,7 +72,15 @@ test('get subnodes', async () => {
   expect(receivedMessage).toStrictEqual(['{0001', 'n- /PATH/TO/MY/NODE/TESTA', 'n- /PATH/TO/MY/NODE/TESTB', 'n- /PATH/TO/MY/NODE/TESTC', 'n- /PATH/TO/MY/NODE/TESTD', '}']);
 });
 
-test('get a single property', async () => {
+test('get - subnodes (empty)', async () => {
+  server.PATH.TO.YOUR.NODE.Ab = 2 as any;  
+
+  client.write('0001#GET /PATH/TO/YOUR/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 2);
+  expect(receivedMessage).toStrictEqual(['{0001', '}']);
+});
+
+test('get - a single property', async () => {
   server.PATH.TO.MY.NODE.TESTB.Aa = 'hello\nworld' as any;
   receivedMessage = [];
   client.write('0001#GET /PATH/TO/MY/NODE/TESTB.Aa\n');
@@ -92,7 +100,7 @@ test('get a single property', async () => {
   expect(receivedMessage).toStrictEqual(['pr /PATH/TO/MY/NODE/TESTB.Ac=true']);
 });
 
-test('get all property', async () => {
+test('get - all property', async () => {
   server.PATH.TO.MY.NODE.TESTB.Aa = 'hello\nworld' as any;
   server.PATH.TO.MY.NODE.TESTB.Ab = 2 as any;
   server.PATH.TO.MY.NODE.TESTB.Ac = { rw: false, value: true } as any;
@@ -101,6 +109,32 @@ test('get all property', async () => {
   await waitForAnEvent(client, 'frame', debug, 3);
   expect(receivedMessage).toStrictEqual(['pw /PATH/TO/MY/NODE/TESTB.Aa=hello\\nworld', 'pw /PATH/TO/MY/NODE/TESTB.Ab=2', 'pr /PATH/TO/MY/NODE/TESTB.Ac=true']);
 });
+
+test('get - syntax error', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+
+  client.write('GET NODETestProperty\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E GET NODETestProperty %E001:Syntax error']);
+});
+
+test('get - non existing node', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+
+  client.write('GET /PATH/TO/YOUR/NODE.TestProperty\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E GET /PATH/TO/YOUR/NODE.TestProperty %E002:Not exists']);
+});
+
+test('get - non existing property', async () => {
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+
+  client.write('GET /PATH/TO/MY/NODE.Property\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E GET /PATH/TO/MY/NODE.Property %E002:Not exists']);
+});
+
+
 
 //
 // SET

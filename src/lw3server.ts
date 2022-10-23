@@ -139,6 +139,10 @@ export class Lw3Server extends EventEmitter {
          *  GET /SOME/PATH.* - get all props and methods
          *  GET /SOME/PATH.Prop - get a single prop
          */
+        if (args[0] !== '/') {
+          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+          break;
+        }
         const dotPosition = args.indexOf('.');
         if (dotPosition === -1) {
           // GET /SOME/PATH   - get subnodes
@@ -152,7 +156,7 @@ export class Lw3Server extends EventEmitter {
           const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
           const propName = args.substring(dotPosition + 1);
           if (!node) {
-            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound);
+            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
             break;
           }
           if (propName === '*') {
@@ -167,6 +171,10 @@ export class Lw3Server extends EventEmitter {
           } else {
             // getting single property
             const prop = node.__properties__(propName);
+            if (prop === undefined) {
+              response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+              break;
+            }
             response += 'p' + (prop.rw ? 'w' : 'r') + ' ' + args + '=' + escape(prop.value) + '\n';
           }
         }
