@@ -100,14 +100,21 @@ test('get - a single property', async () => {
   expect(receivedMessage).toStrictEqual(['pr /PATH/TO/MY/NODE/TESTB.Ac=true']);
 });
 
-test('get - all property', async () => {
+test('get - all property and methods', async () => {
   server.PATH.TO.MY.NODE.TESTB.Aa = 'hello\nworld' as any;
   server.PATH.TO.MY.NODE.TESTB.Ab = 2 as any;
   server.PATH.TO.MY.NODE.TESTB.Ac = { rw: false, value: true } as any;
+  server.PATH.TO.MY.NODE.TESTB.m1 = (()=>{ /* */}) as any;
+  server.PATH.TO.MY.NODE.TESTB.m2 = (()=>{ /* */}) as any;
 
   client.write('GET /PATH/TO/MY/NODE/TESTB.*\n');
-  await waitForAnEvent(client, 'frame', debug, 3);
-  expect(receivedMessage).toStrictEqual(['pw /PATH/TO/MY/NODE/TESTB.Aa=hello\\nworld', 'pw /PATH/TO/MY/NODE/TESTB.Ab=2', 'pr /PATH/TO/MY/NODE/TESTB.Ac=true']);
+  await waitForAnEvent(client, 'frame', debug, 5);
+  expect(receivedMessage).toStrictEqual(
+    ['pw /PATH/TO/MY/NODE/TESTB.Aa=hello\\nworld', 
+     'pw /PATH/TO/MY/NODE/TESTB.Ab=2', 
+     'pr /PATH/TO/MY/NODE/TESTB.Ac=true',
+     'm- /PATH/TO/MY/NODE/TESTB:m1',
+     'm- /PATH/TO/MY/NODE/TESTB:m2']);     
 });
 
 test('get - syntax error', async () => {
@@ -279,3 +286,14 @@ test('call a method - generic error', async () => {
   await waitForAnEvent(client, 'frame', debug, 1);
   expect(receivedMessage).toStrictEqual(['mE /PATH/TO/MY/NODE:subtract=something terrible has happened %E010:Internal error']);
 });
+
+test('call a method - escaping', async () => {
+  server.PATH.TO.MY.NODE.concat = ((a: string, b: string) => {
+    return (a+b).replace('\n','\t').replace('\n',' ');
+  }) as any;
+
+  client.write('CALL /PATH/TO/MY/NODE:concat(Hello\\nWorld!,Hello\\nthere!)\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['mO /PATH/TO/MY/NODE:concat=Hello\\tWorld!Hello there!']);
+});
+

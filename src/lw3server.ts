@@ -130,14 +130,19 @@ export class Lw3Server extends EventEmitter {
             break;
           }
           if (propName === '*') {
-            // getting all property
+            // getting all property and methods (TODO!!!)
             const props = node.__properties__();
+            const methods = node.__methods__();
             const nodename = args.substring(0, dotPosition);
             Object.keys(props)
               .sort()
               .forEach((propname) => {
                 response += 'p' + (props[propname].rw ? 'w' : 'r') + ' ' + nodename + '.' + propname + '=' + escape(props[propname].value) + '\n';
               });
+            methods.forEach((name)=>{
+              response += 'm-' + ' ' + nodename + ':' + name + '\n';
+            })
+
           } else {
             // getting single property
             const prop = node.__properties__(propName);
@@ -205,7 +210,7 @@ export class Lw3Server extends EventEmitter {
           debug(methodarguments);
           const resp = await node[methodname + '__method__'](...methodarguments);
           if (!resp) response += 'mO ' + args.substring(0, bracketPosition) + '\n';
-          else response += 'mO ' + args.substring(0, bracketPosition) + '=' + resp.toString() + '\n';
+          else response += 'mO ' + args.substring(0, bracketPosition) + '=' + escape(resp.toString()) + '\n';
         } catch (e) {
           if ((e as Lw3Error).lw3Error) {
             response += 'mE ' + args.substring(0, bracketPosition) + ' ' + Lw3Server.getErrorHeader((e as Lw3Error).lw3Error) + '\n';
@@ -215,9 +220,13 @@ export class Lw3Server extends EventEmitter {
           }
         }
       } else if (command === 'MAN') {
-        /* todo */
-      } else if (command === 'SET') {
-        /* todo */
+        /**
+         *  MAN command has three variant:         
+         *  MAN /SOME/PATH.* - get manual of all props and methods
+         *  MAN /SOME/PATH.Prop - get a manual single prop
+         *  MAN /SOME/PATH:method - get a manual single method
+         */
+
       } else if (command === 'OPEN') {
         /* todo */
       } else if (command === 'CLOSE') {
