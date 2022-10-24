@@ -104,17 +104,22 @@ test('get - all property and methods', async () => {
   server.PATH.TO.MY.NODE.TESTB.Aa = 'hello\nworld' as any;
   server.PATH.TO.MY.NODE.TESTB.Ab = 2 as any;
   server.PATH.TO.MY.NODE.TESTB.Ac = { rw: false, value: true } as any;
-  server.PATH.TO.MY.NODE.TESTB.m1 = (()=>{ /* */}) as any;
-  server.PATH.TO.MY.NODE.TESTB.m2 = (()=>{ /* */}) as any;
+  server.PATH.TO.MY.NODE.TESTB.m1 = (() => {
+    /* */
+  }) as any;
+  server.PATH.TO.MY.NODE.TESTB.m2 = (() => {
+    /* */
+  }) as any;
 
   client.write('GET /PATH/TO/MY/NODE/TESTB.*\n');
   await waitForAnEvent(client, 'frame', debug, 5);
-  expect(receivedMessage).toStrictEqual(
-    ['pw /PATH/TO/MY/NODE/TESTB.Aa=hello\\nworld', 
-     'pw /PATH/TO/MY/NODE/TESTB.Ab=2', 
-     'pr /PATH/TO/MY/NODE/TESTB.Ac=true',
-     'm- /PATH/TO/MY/NODE/TESTB:m1',
-     'm- /PATH/TO/MY/NODE/TESTB:m2']);     
+  expect(receivedMessage).toStrictEqual([
+    'pw /PATH/TO/MY/NODE/TESTB.Aa=hello\\nworld',
+    'pw /PATH/TO/MY/NODE/TESTB.Ab=2',
+    'pr /PATH/TO/MY/NODE/TESTB.Ac=true',
+    'm- /PATH/TO/MY/NODE/TESTB:m1',
+    'm- /PATH/TO/MY/NODE/TESTB:m2',
+  ]);
 });
 
 test('get - syntax error', async () => {
@@ -289,7 +294,7 @@ test('call a method - generic error', async () => {
 
 test('call a method - escaping', async () => {
   server.PATH.TO.MY.NODE.concat = ((a: string, b: string) => {
-    return (a+b).replace('\n','\t').replace('\n',' ');
+    return (a + b).replace('\n', '\t').replace('\n', ' ');
   }) as any;
 
   client.write('CALL /PATH/TO/MY/NODE:concat(Hello\\nWorld!,Hello\\nthere!)\n');
@@ -297,3 +302,71 @@ test('call a method - escaping', async () => {
   expect(receivedMessage).toStrictEqual(['mO /PATH/TO/MY/NODE:concat=Hello\\tWorld!Hello there!']);
 });
 
+//
+// OPEN / CLOSE
+//
+
+test('open/close a node multiple times', async () => {
+  server.PATH.TO.MY.NODE.Ab = 1 as any;
+  server.PATH.TO.YOUR.NODE.Ab = 1 as any;
+
+  client.write('OPEN /PATH/TO/MY/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['o- /PATH/TO/MY/NODE']);
+
+  receivedMessage = [];
+  client.write('OPEN /PATH/TO/MY/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['oE /PATH/TO/MY/NODE %E003:Already exists']);
+
+  receivedMessage = [];
+  client.write('CLOSE /PATH/TO/MY/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['c- /PATH/TO/MY/NODE']);
+
+  receivedMessage = [];
+  client.write('CLOSE /PATH/TO/MY/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['cE /PATH/TO/MY/NODE %E002:Not exists']);
+});
+
+test('list opened nodes', async () => {
+  server.PATH.TO.MY.NODE.Ab = 1 as any;
+  server.PATH.TO.YOUR.NODE.Ab = 1 as any;
+
+  client.write('OPEN /PATH/TO/MY/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['o- /PATH/TO/MY/NODE']);
+
+  receivedMessage = [];
+  client.write('OPEN /PATH/TO/YOUR/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['o- /PATH/TO/YOUR/NODE']);
+
+  receivedMessage = [];
+  client.write('OPEN\n');
+  await waitForAnEvent(client, 'frame', debug, 2);
+  expect(receivedMessage).toStrictEqual(['o- /PATH/TO/MY/NODE', 'o- /PATH/TO/YOUR/NODE']);
+
+  receivedMessage = [];
+  client.write('CLOSE /PATH/TO/MY/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['c- /PATH/TO/MY/NODE']);
+
+  receivedMessage = [];
+  client.write('CLOSE /PATH/TO/YOUR/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['c- /PATH/TO/YOUR/NODE']);
+});
+
+test('open syntax error', async () => {
+  client.write('OPEN cxvyxcv\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E OPEN cxvyxcv %E001:Syntax error']);
+});
+
+test('open non-existing node', async () => {
+  client.write('OPEN /SOME/NODE/NOT/EXISTS\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['oE /SOME/NODE/NOT/EXISTS %E002:Not exists']);
+});

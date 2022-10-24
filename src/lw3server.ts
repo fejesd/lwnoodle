@@ -100,7 +100,7 @@ export class Lw3Server extends EventEmitter {
     if (firstSpace !== -1) {
       command = msg.substring(0, firstSpace);
       args = msg.substring(firstSpace + 1);
-    }
+    } else command = msg;
     do {
       if (command === 'GET') {
         /**
@@ -130,7 +130,7 @@ export class Lw3Server extends EventEmitter {
             break;
           }
           if (propName === '*') {
-            // getting all property and methods (TODO!!!)
+            // getting all property and methods
             const props = node.__properties__();
             const methods = node.__methods__();
             const nodename = args.substring(0, dotPosition);
@@ -139,10 +139,9 @@ export class Lw3Server extends EventEmitter {
               .forEach((propname) => {
                 response += 'p' + (props[propname].rw ? 'w' : 'r') + ' ' + nodename + '.' + propname + '=' + escape(props[propname].value) + '\n';
               });
-            methods.forEach((name)=>{
+            methods.forEach((name) => {
               response += 'm-' + ' ' + nodename + ':' + name + '\n';
-            })
-
+            });
           } else {
             // getting single property
             const prop = node.__properties__(propName);
@@ -221,17 +220,55 @@ export class Lw3Server extends EventEmitter {
         }
       } else if (command === 'MAN') {
         /**
-         *  MAN command has three variant:         
+         *  MAN command has three variant:
          *  MAN /SOME/PATH.* - get manual of all props and methods
          *  MAN /SOME/PATH.Prop - get a manual single prop
          *  MAN /SOME/PATH:method - get a manual single method
          */
-
+        /* todo */
       } else if (command === 'OPEN') {
-        /* todo */
+        /* OPEN command has two variant:
+           OPEN /SOME/PATH  - open the node
+           OPEN   - will list the opened nodes
+        */
+        if (args === '') {
+          // list opened nodes
+          this.sessions[socketId].opened.forEach((element) => {
+            response += 'o- ' + element + '\n';
+          });
+        } else {
+          // open a node
+          if (args[0] !== '/') {
+            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+            break;
+          }
+          const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
+          if (node === undefined) {
+            response += 'oE ' + args + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+            break;
+          }
+          if (this.sessions[socketId].opened.includes(args)) {
+            response += 'oE ' + args + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_AlreadyExists) + '\n';
+            break;
+          }
+          this.sessions[socketId].opened.push(args);
+          response += 'o- ' + args + '\n';
+        }
       } else if (command === 'CLOSE') {
-        /* todo */
+        /**
+         * CLOSE  /SOME/PATH
+         */
+        if (this.sessions[socketId].opened.includes(args)) {
+          this.sessions[socketId].opened = this.sessions[socketId].opened.filter((v) => {
+            return v !== args;
+          });
+          response += 'c- ' + args + '\n';
+        } else {
+          // not subscribed
+          response += 'cE ' + args + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+        }
       } else {
+        // unknown command
         response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
       }
     } while (false);
