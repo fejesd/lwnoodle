@@ -1,9 +1,22 @@
-import { Method, Noodle, NoodleServer, Property } from './noodle';
+import { ListenerCallback, Method, Noodle, NoodleServer, Property } from './noodle';
 import { Lw3Server, Lw3ServerOptions } from './lw3server';
 import { convertValue, obj2fun } from './common';
 import Debug from 'debug';
-import { findLastKey } from 'lodash';
+import * as _ from 'lodash';
 const debug = Debug('NoodleServer');
+
+/**
+ * Storing subscriptions.
+ * TODO: make this common with lw3client SubscriberEntry
+ */
+interface SubscriberEntry {
+  path: string;
+  property: string;
+  value: string;
+  callback: (path: string, property: string, value: any) => void;
+  subscriptionId: number;
+  count: number;
+}
 
 /**
  * NoodleServerObject represents a single node stored in local memory.
@@ -23,6 +36,9 @@ export class NoodleServerObject {
   declare methods: { [name: string]: Method };
   /** Container for child nodes */
   declare nodes: { [name: string]: Noodle };
+  /** Store subscriptions */
+  declare subscribers: SubscriberEntry[];
+  declare subscriptionIdCounter: number;
 
   constructor(name: string = 'default', path: string[] = [], lw3server?: Lw3Server) {
     Object.defineProperty(this, 'clientname', { enumerable: false, configurable: true, value: name });
@@ -31,6 +47,8 @@ export class NoodleServerObject {
     Object.defineProperty(this, 'properties', { enumerable: false, configurable: true, writable: true, value: {} });
     Object.defineProperty(this, 'nodes', { enumerable: false, configurable: true, value: {} });
     Object.defineProperty(this, 'methods', { enumerable: false, configurable: true, value: {} });
+    Object.defineProperty(this, 'subscribers', { enumerable: false, configurable: true, value: [] });
+    Object.defineProperty(this, 'subscriptionIdCounter', { enumerable: false, configurable: true, writable: true, value: 0 });
     this.properties = {};
   }
 
@@ -83,36 +101,81 @@ export class NoodleServerObject {
       }
     });
   }
+
+  /** Called when a property has changed. Will trigger the callback functions */
+  handleCallbacks(property: string, value: string) {
+    this.subscribers.forEach((entry: SubscriberEntry, index, object) => {
+      if ((!entry.property || entry.property === property) && (!entry.value || entry.value === value)) {
+        debug('callback ', this.path, property, value);
+        entry.callback('/' + this.path.join('/'), property, convertValue(value));
+        if (entry.count > 0) {
+          entry.count--;
+          if (entry.count === 0) {
+            object.splice(index, 1);
+            debug('(callback deleted)');
+          }
+        }
+      }
+    });
+  }
 }
 
 export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
   get(t: NoodleServerObject, key: string): any {
-    if (key === 'toJSON') {
-      const ret = t.toJSON();
-      return () => ret;
-    } else if (key === 'fromJSON') {
-      return (json: any) => {
-        t.fromJSON(json);
-      };
-    } else if (key === '__nodes__') {
-      return () => {
-        return Object.keys(t.nodes).sort();
-      };
-    } else if (key === '__methods__') {
-      return () => {
-        return Object.keys(t.methods).sort();
-      };
-    } else if (key === '__properties__') {
-      return (pkey: string | undefined) => {
-        if (pkey) return t.properties[pkey];
-        else return t.properties;
-      };
-    } else if (key === 'server') {
-      return t.lw3server?.server;
-    } else if (key === '__close__') {
-      return () => {
-        t.lw3server?.close();
-      };
+    switch (key) {
+      case 'toJSON':
+        const ret = t.toJSON();
+        return () => ret;
+      case 'fromJSON':
+        return (json: any) => {
+          t.fromJSON(json);
+        };
+      case '__nodes__':
+        return () => {
+          return Object.keys(t.nodes).sort();
+        };
+      case '__methods__':
+        return () => {
+          return Object.keys(t.methods).sort();
+        };
+      case '__properties__':
+        return (pkey: string | undefined) => {
+          if (pkey) return t.properties[pkey];
+          else return t.properties;
+        };
+      case 'server':
+        return t.lw3server?.server;
+      case '__close__':
+        return () => {
+          t.lw3server?.close();
+        };
+      case 'addListener':
+        return (callback: ListenerCallback, condition?: string) => {
+          let property = '';
+          let value = '';
+          if (condition) {
+            const conditionParts = condition.split('=');
+            property = condition[0];
+            if (condition.length === 2) value = condition[1];
+          }
+          const subscriptionId = ++t.subscriptionIdCounter;
+          t.subscribers.push({
+            path: '',
+            callback,
+            subscriptionId,
+            count: -1,
+            property,
+            value,
+          });
+        };
+      case 'closeListener': {
+        return (subscriptionId: number | ListenerCallback) => {
+          let subscriptionIndex = -1;
+          if (typeof subscriptionId === 'number') subscriptionIndex = _.findIndex(t.subscribers, { subscriptionId: subscriptionId as number });
+          else if (typeof subscriptionId === 'function') subscriptionIndex = _.findIndex(t.subscribers, { callback: subscriptionId as ListenerCallback });
+          if (subscriptionIndex !== -1) t.subscribers.splice(subscriptionIndex, 1);
+        };
+      }
     }
     let $ = false;
     if (key[0] === '$') {
@@ -147,13 +210,6 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
             return f.apply(this, args);
           }; /* wrap into async function */
       })(t.methods[mainkey].fun);
-
-      return (
-        t.methods[mainkey].fun ||
-        ((...args: string[]) => {
-          /* */
-        })
-      );
     }
     if ($) return undefined; // keys marked with $ sign are not auto-created
     // a new object shall be created
@@ -198,17 +254,32 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       if (typeof value === 'object') {
         if (isRw || isManual) return false;
         // update to a new Property object
-        if ('value' in value) t.properties[mainkey].value = (value['value' as keyof object] as any).toString(); // todo: type checks?
         if ('manual' in value) t.properties[mainkey].manual = value['manual' as keyof object];
         if ('rw' in value) t.properties[mainkey].rw = value['rw' as keyof object];
         if ('setter' in value) t.properties[mainkey].setter = value['setter' as keyof object];
         if ('getter' in value) t.properties[mainkey].getter = value['getter' as keyof object];
+        if ('value' in value) {
+          const newValue = (value['value' as keyof object] as any).toString();
+          if (t.properties[mainkey].value !== newValue) {
+            t.properties[mainkey].value = newValue;
+            t.handleCallbacks(mainkey, newValue);
+          }
+        }
       } else {
         // update with a primitive type
         if (isManual) t.properties[mainkey].manual = value.toString();
         else if (isRw) t.properties[mainkey].rw = value ? true : false;
-        else if (t.properties[mainkey].setter) t.properties[mainkey].setter?.bind(t.properties[mainkey])(value);
-        else t.properties[mainkey].value = value.toString();
+        else if (t.properties[mainkey].setter) {
+          const oldvalue = t.properties[mainkey].value;
+          t.properties[mainkey].setter?.bind(t.properties[mainkey])(value);
+          if (oldvalue !== t.properties[mainkey].value) t.handleCallbacks(mainkey, t.properties[mainkey].value);
+        } else {
+          const newValue = value.toString();
+          if (t.properties[mainkey].value !== newValue) {
+            t.properties[mainkey].value = newValue;
+            t.handleCallbacks(mainkey, newValue);
+          }
+        }
       }
       return true;
     } else if (mainkey in t.nodes && (keymodifier === '' || keymodifier === 'node')) {
@@ -276,6 +347,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
         if ('rw' in value) t.properties[mainkey].rw = value['rw' as keyof object];
         if ('setter' in value) t.properties[mainkey].setter = value['setter' as keyof object];
         if ('getter' in value) t.properties[mainkey].getter = value['getter' as keyof object];
+        t.handleCallbacks(mainkey, t.properties[mainkey].value);
       } else {
         if (isManual) {
           t.properties[mainkey].manual = value.toString();
@@ -284,6 +356,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
         } else {
           debug(`Create ${mainkey} property from data in ${t.path.at(-1)}`);
           t.properties[mainkey].value = value.toString();
+          t.handleCallbacks(mainkey, t.properties[mainkey].value);
         }
       }
     }
