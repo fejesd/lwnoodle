@@ -16,6 +16,36 @@ beforeEach(() => {
   root = new Proxy(clientObj, NoodleServerProxyHandler) as unknown as NoodleServer;
 });
 
+//
+// nodes
+//
+
+test('creating nodes automatically', () => {
+  root.MANAGEMENT.CPU.DATETIME.TimeZone = 2 as any;
+  root.MANAGEMENT.CPU.DATETIME.Enable = true as any;
+  root.MANAGEMENT.ROOM.ALFA.BETA.Setting = 'fortytwo' as any;
+
+  expect(root.MANAGEMENT.CPU.DATETIME.TimeZone).toBe(2);
+  expect(root.MANAGEMENT.CPU.DATETIME.Enable).toBe(true);
+  expect(root.MANAGEMENT.ROOM.ALFA.BETA.Setting).toBe('fortytwo');
+});
+
+test('disable node autocreation with $ sign', () => {
+  root.MANAGEMENT.CPU.DATETIME.TimeZone = 2 as any;
+  root.MANAGEMENT.CPU.DATETIME.Enable = true as any;
+  expect(() => (root.MANAGEMENT.ROOM.ALFA.$BETA.Setting = 'fortytwo' as any)).toThrow(TypeError);
+
+  expect(root.MANAGEMENT.CPU.DATETIME.TimeZone).toBe(2);
+  expect(root.MANAGEMENT.CPU.DATETIME.Enable).toBe(true);
+  expect(() => root.MANAGEMENT.ROOM.ALFA.$BETA.Setting).toThrow(TypeError);
+  expect(root.MANAGEMENT.ROOM.ALFA.BETA.Setting).toBe('');
+  expect(root.MANAGEMENT.ROOM.ALFA.$BETA.Setting).toBe('');
+});
+
+//
+// properties
+//
+
 test('creating properties automatically', () => {
   root.ProductName = 'TestProduct' as any;
   expect(root.ProductName).toBe('TestProduct');
@@ -39,28 +69,6 @@ test('use casted properties', () => {
   root.productName__prop__ = 'TestProduct' as any;
   expect(root.productName).toBe('TestProduct');
   expect(root.productName__prop__).toBe('TestProduct');
-});
-
-test('creating nodes automatically', () => {
-  root.MANAGEMENT.CPU.DATETIME.TimeZone = 2 as any;
-  root.MANAGEMENT.CPU.DATETIME.Enable = true as any;
-  root.MANAGEMENT.ROOM.ALFA.BETA.Setting = 'fortytwo' as any;
-
-  expect(root.MANAGEMENT.CPU.DATETIME.TimeZone).toBe(2);
-  expect(root.MANAGEMENT.CPU.DATETIME.Enable).toBe(true);
-  expect(root.MANAGEMENT.ROOM.ALFA.BETA.Setting).toBe('fortytwo');
-});
-
-test('disable node autocreation with $ sign', () => {
-  root.MANAGEMENT.CPU.DATETIME.TimeZone = 2 as any;
-  root.MANAGEMENT.CPU.DATETIME.Enable = true as any;
-  expect(() => (root.MANAGEMENT.ROOM.ALFA.$BETA.Setting = 'fortytwo' as any)).toThrow(TypeError);
-
-  expect(root.MANAGEMENT.CPU.DATETIME.TimeZone).toBe(2);
-  expect(root.MANAGEMENT.CPU.DATETIME.Enable).toBe(true);
-  expect(() => root.MANAGEMENT.ROOM.ALFA.$BETA.Setting).toThrow(TypeError);
-  expect(root.MANAGEMENT.ROOM.ALFA.BETA.Setting).toBe('');
-  expect(root.MANAGEMENT.ROOM.ALFA.$BETA.Setting).toBe('');
 });
 
 test('change property values', () => {
@@ -117,6 +125,10 @@ test('use property getters', () => {
   expect(root.ProductName__prop__).toBe('testtest');
 });
 
+//
+// methods
+//
+
 test('using methods', async () => {
   const fun = (a: number, b: number) => {
     return a + b;
@@ -145,6 +157,10 @@ test('using methods', async () => {
   } as any;
   expect(await root.PATH.TO.NODE.subtr(3, 1)).toBe(2);
 });
+
+//
+// delete, Object.keys
+//
 
 test('delete nodes, properties, methods', async () => {
   root.PATH.TO.NODE.SOMETHING.Prop = 1 as any;
@@ -179,6 +195,10 @@ test('Object.keys shall return subnodes, properties, methods', () => {
   expect(Object.keys(root.PATH.TO.NODE.SOMETHING)).toStrictEqual(['SUBNODE1', 'SUBNODE2', 'SUBNODE3', 'Prop', 'Test', 'apply', 'meth']);
 });
 
+//
+// manuals
+//
+
 test('setting and getting property manuals', () => {
   root.PATH.TO.NODE.Prop1 = 'somevalue' as any;
   root.PATH.TO.NODE.Prop1__man__ = 'desc' as any;
@@ -207,36 +227,6 @@ test('setting and getting property manuals', () => {
 
   expect(root.PATH.TO.NODE.prop4__prop__).toBe('somevalue');
   expect(root.PATH.TO.NODE.prop4__prop__man__).toBe('desc');
-});
-
-test('setting and getting property rw flag', () => {
-  root.PATH.TO.NODE.Prop1 = 'somevalue' as any;
-  root.PATH.TO.NODE.Prop1__rw__ = false as any;
-
-  root.PATH.TO.NODE.Prop2__rw__ = undefined as any;
-  root.PATH.TO.NODE.Prop2 = 'somevalue' as any;
-
-  root.PATH.TO.NODE.Prop3 = { value: 'somevalue', rw: false } as any;
-
-  root.PATH.TO.NODE.prop4__prop__rw__ = 0 as any;
-  root.PATH.TO.NODE.prop4__prop = 'somevalue' as any;
-
-  expect(Object.keys(root.PATH.TO.NODE)).toStrictEqual(['Prop1', 'Prop2', 'Prop3', 'prop4']);
-
-  expect(root.PATH.TO.NODE.Prop1).toBe('somevalue');
-  expect(root.PATH.TO.NODE.Prop1__rw__).toBe(false);
-
-  expect(root.PATH.TO.NODE.Prop2).toBe('somevalue');
-  expect(root.PATH.TO.NODE.Prop2__rw__).toBe(false);
-
-  expect(root.PATH.TO.NODE.Prop3).toBe('somevalue');
-  expect(root.PATH.TO.NODE.Prop3__rw__).toBe(false);
-
-  expect(root.PATH.TO.NODE.prop4).toBe('somevalue');
-  expect(root.PATH.TO.NODE.prop4__rw__).toBe(false);
-
-  expect(root.PATH.TO.NODE.prop4__prop__).toBe('somevalue');
-  expect(root.PATH.TO.NODE.prop4__prop__rw__).toBe(false);
 });
 
 test('setting and getting method manuals', async () => {
@@ -279,6 +269,44 @@ test('setting and getting method manuals', async () => {
   expect(await root.PATH.TO.NODE.Meth4__method__()).toBe(42);
   expect(root.PATH.TO.NODE.Meth4__method__man__).toBe('desc');
 });
+
+//
+// rw flag
+//
+
+test('setting and getting property rw flag', () => {
+  root.PATH.TO.NODE.Prop1 = 'somevalue' as any;
+  root.PATH.TO.NODE.Prop1__rw__ = false as any;
+
+  root.PATH.TO.NODE.Prop2__rw__ = undefined as any;
+  root.PATH.TO.NODE.Prop2 = 'somevalue' as any;
+
+  root.PATH.TO.NODE.Prop3 = { value: 'somevalue', rw: false } as any;
+
+  root.PATH.TO.NODE.prop4__prop__rw__ = 0 as any;
+  root.PATH.TO.NODE.prop4__prop = 'somevalue' as any;
+
+  expect(Object.keys(root.PATH.TO.NODE)).toStrictEqual(['Prop1', 'Prop2', 'Prop3', 'prop4']);
+
+  expect(root.PATH.TO.NODE.Prop1).toBe('somevalue');
+  expect(root.PATH.TO.NODE.Prop1__rw__).toBe(false);
+
+  expect(root.PATH.TO.NODE.Prop2).toBe('somevalue');
+  expect(root.PATH.TO.NODE.Prop2__rw__).toBe(false);
+
+  expect(root.PATH.TO.NODE.Prop3).toBe('somevalue');
+  expect(root.PATH.TO.NODE.Prop3__rw__).toBe(false);
+
+  expect(root.PATH.TO.NODE.prop4).toBe('somevalue');
+  expect(root.PATH.TO.NODE.prop4__rw__).toBe(false);
+
+  expect(root.PATH.TO.NODE.prop4__prop__).toBe('somevalue');
+  expect(root.PATH.TO.NODE.prop4__prop__rw__).toBe(false);
+});
+
+//
+// JSON conversion
+//
 
 test('node converting to JSON', () => {
   root.NODE.Alfa = 'Test' as any;
@@ -347,6 +375,10 @@ test('fromJSON call will extend the current node with the json', async () => {
   expect(root.NODE.TWO.Zeta).toBe('zeta');
 });
 
+//
+// internal accessors
+//
+
 test('get all subnodes by __nodes__() call', () => {
   root.A.Test = 1 as any;
   root.C.Test = 3 as any;
@@ -372,4 +404,33 @@ test('get all properties by __properties__() call', () => {
   root.Ctest = 42 as any;
   root.Btest = true as any;
   expect(Object.keys(root.__properties__()).sort()).toStrictEqual(['Atest', 'Btest', 'Ctest']);
+});
+
+//
+// addListener
+//
+
+test('addListener should call the callback when needed', async () => {
+  root.PATH.TO.MY.NODE.Ab = 1 as any;
+  root.PATH.TO.MY.NODE.Ac = 1 as any;
+  root.PATH.TO.MY.NODE.SUBNODE.Ab = 1 as any;
+  root.PATH.TO.ANOTHER.NODE.Ab = 1 as any;
+
+  const cb1 = jest.fn();
+  const id1 = root.PATH.TO.MY.NODE.addListener(cb1);
+
+  root.PATH.TO.MY.NODE.SUBNODE.Ab = 1 as any;
+  root.PATH.TO.MY.NODE.Ab = 2 as any;
+  root.PATH.TO.MY.NODE.New = 1 as any;
+  root.PATH.TO.ANOTHER.NODE.Ab = 2 as any;
+
+  expect(cb1.mock.calls.length).toBe(2);
+  expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/MY/NODE');
+  expect(cb1.mock.calls[0][1]).toBe('Ab');
+  expect(cb1.mock.calls[0][2]).toBe(2);
+  expect(cb1.mock.calls[1][0]).toBe('/PATH/TO/MY/NODE');
+  expect(cb1.mock.calls[1][1]).toBe('New');
+  expect(cb1.mock.calls[1][2]).toBe(1);
+
+  root.PATH.TO.ANOTHER.NODE.closeListener(id1);
 });

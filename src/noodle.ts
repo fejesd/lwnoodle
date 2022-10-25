@@ -1,6 +1,8 @@
 import { Lw3Client } from './lw3client';
 import { Lw3Server } from './lw3server';
 
+export type ListenerCallback = (path: string, property: string, value: any) => void;
+
 export type Noodle = {
   [method: string]: (...args: any[]) => string;
 } & {
@@ -24,7 +26,7 @@ export type NoodleClient = Noodle & {
    * The optional condition might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true"
    * @returns {Promise<number>} the number can be used remove the callback later
    */
-  addListener(callback: (path: string, property: string, value: string) => void, condition?: string): Promise<number>;
+  addListener(callback: ListenerCallback, condition?: string): Promise<number>;
 
   /** It will remove the callback function (and also close the node if it is not needed to keep open) */
   closeListener(id: number): Promise<void>;
@@ -32,7 +34,7 @@ export type NoodleClient = Noodle & {
   /** Will call the callback function only once when a property has changed under the node.
    * The optional condition might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true"
    */
-  once(callback: (path: string, property: string, value: string) => void, condition?: string): Promise<number>;
+  once(callback: ListenerCallback, condition?: string): Promise<number>;
 
   /** Will resolve when a change has happened under the node.
    * The optional condition might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true"

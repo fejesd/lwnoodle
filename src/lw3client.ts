@@ -4,6 +4,7 @@ import { escape, unescape } from './escaping';
 import { convertValue } from './common';
 import Debug from 'debug';
 import * as _ from 'lodash';
+import { ListenerCallback } from './noodle';
 
 const debug = Debug('Lw3Client');
 
@@ -28,7 +29,7 @@ interface SubscriberEntry {
   path: string;
   property: string;
   value: string;
-  callback: (path: string, property: string, value: any) => void;
+  callback: ListenerCallback;
   subscriptionId: number;
   count: number;
 }
@@ -355,7 +356,7 @@ export class Lw3Client extends EventEmitter {
    * Will fetch all property of a node and store in the cache
    * @param path
    */
-  FETCHALL(path: string, callback: (path: string, property: string, value: string) => void): Promise<void> {
+  FETCHALL(path: string, callback: ListenerCallback): Promise<void> {
     return new Promise((resolve, reject) => {
       this.cmdSend(
         'GET ' + path + '.*',
@@ -389,7 +390,7 @@ export class Lw3Client extends EventEmitter {
    * @param count optional. After calling the callback count times, the subscription will be closed automatically
    * @returns Promise rejects on failure. Promise return an ID number, which can be used for removing the watch entry later.
    */
-  OPEN(path: string, callback: (path: string, property: string, value: string) => void, rule: string = '', count = -1): Promise<number> {
+  OPEN(path: string, callback: ListenerCallback, rule: string = '', count = -1): Promise<number> {
     // todo sanity check
     if (path[path.length - 1] === '/') path = path.slice(0, -1);
     const alreadyOpen = _.findIndex(this.subscribers, { path }) !== -1;
@@ -432,7 +433,7 @@ export class Lw3Client extends EventEmitter {
       debug(JSON.stringify(subscriptionId));
       if (typeof subscriptionId === 'number') subscriptionIndex = _.findIndex(this.subscribers, { subscriptionId: subscriptionId as number });
       else if (typeof subscriptionId === 'function') {
-        subscriptionIndex = _.findIndex(this.subscribers, { callback: subscriptionId as (path: string, property: string, value: any) => void });
+        subscriptionIndex = _.findIndex(this.subscribers, { callback: subscriptionId as ListenerCallback });
       }
       if (subscriptionIndex === -1) {
         reject();
