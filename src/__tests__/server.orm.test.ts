@@ -434,3 +434,89 @@ test('addListener should call the callback when needed', async () => {
 
   root.PATH.TO.ANOTHER.NODE.closeListener(id1);
 });
+
+test('addListener should filter the property when needed', async () => {
+  root.PATH.TO.MY.NODE.Something = 1 as any;
+  root.PATH.TO.MY.NODE.Interested = 1 as any;
+
+  const cb1 = jest.fn();
+  const id1 = root.PATH.TO.MY.NODE.addListener(cb1, 'Interested');
+
+  root.PATH.TO.MY.NODE.Something = 2 as any;
+  root.PATH.TO.MY.NODE.Interested = 2 as any;
+
+  expect(cb1.mock.calls.length).toBe(1);
+  expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/MY/NODE');
+  expect(cb1.mock.calls[0][1]).toBe('Interested');
+  expect(cb1.mock.calls[0][2]).toBe(2);
+
+  root.PATH.TO.ANOTHER.NODE.closeListener(id1);
+});
+
+test('addListener should filter the property and value when needed', async () => {
+  root.PATH.TO.MY.NODE.Something = 1 as any;
+  root.PATH.TO.MY.NODE.Interested = 1 as any;
+
+  const cb1 = jest.fn();
+  const id1 = root.PATH.TO.MY.NODE.addListener(cb1, 'Interested=3');
+
+  root.PATH.TO.MY.NODE.Something = 2 as any;
+  root.PATH.TO.MY.NODE.Interested = 2 as any;
+  root.PATH.TO.MY.NODE.Interested = 3 as any;
+
+  expect(cb1.mock.calls.length).toBe(1);
+  expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/MY/NODE');
+  expect(cb1.mock.calls[0][1]).toBe('Interested');
+  expect(cb1.mock.calls[0][2]).toBe(3);
+
+  root.PATH.TO.ANOTHER.NODE.closeListener(id1);
+});
+
+test('closeListener should remove the callback', async () => {
+  root.PATH.TO.MY.NODE.Ab = 1 as any;
+
+  const cb1 = jest.fn();
+  const cb2 = jest.fn();
+  const id1 = root.PATH.TO.MY.NODE.addListener(cb1);
+  const id2 = root.PATH.TO.ANOTHER.NODE.addListener(cb1);
+
+  root.PATH.TO.MY.NODE.Ab = 2 as any;
+
+  root.PATH.TO.ANOTHER.NODE.closeListener(id1);
+
+  root.PATH.TO.MY.NODE.Ab = 3 as any;
+
+  root.PATH.TO.ANOTHER.NODE.closeListener(id2);
+
+  expect(cb1.mock.calls.length).toBe(2);
+  expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/MY/NODE');
+  expect(cb1.mock.calls[0][1]).toBe('Ab');
+  expect(cb1.mock.calls[0][2]).toBe(2);
+});
+
+test('once should call the callback only once', async () => {
+  root.PATH.TO.MY.NODE.Something = 1 as any;
+  root.PATH.TO.MY.NODE.Interested = 1 as any;
+
+  const cb1 = jest.fn();
+  const id1 = root.PATH.TO.MY.NODE.once(cb1, 'Interested=3');
+
+  root.PATH.TO.MY.NODE.Something = 2 as any;
+  root.PATH.TO.MY.NODE.Interested = 2 as any;
+  root.PATH.TO.MY.NODE.Interested = 3 as any;
+});
+
+test('waitFor should fullfill when the requested change occurs', async () => {
+  root.PATH.TO.MY.NODE.Something = 1 as any;
+  root.PATH.TO.MY.NODE.Interested = 1 as any;
+  setTimeout(() => {
+    root.PATH.TO.MY.NODE.Interested = 2 as any;
+  }, 100);
+  setTimeout(() => {
+    root.PATH.TO.MY.NODE.Interested = 3 as any;
+  }, 150);
+
+  await root.PATH.TO.MY.NODE.waitFor('Interested=3');
+
+  expect(root.PATH.TO.MY.NODE.Interested).toBe(3);
+});
