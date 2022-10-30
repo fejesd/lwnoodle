@@ -133,6 +133,9 @@ export type NoodleServer = Noodle & {
   __properties__(): { [name: string]: Property };
   /** return single property */
   __properties__(s: string): Property;
+
+  addListener(callback: ListenerCallback, condition?: string): number;
+
   /** the connection object. It is not intended for external use */
   lw3server: Lw3Server;
 };

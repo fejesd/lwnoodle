@@ -168,6 +168,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
             property,
             value,
           });
+          return subscriptionId;
         };
       case 'waitFor': {
         return (condition?: string): Promise<void> => {

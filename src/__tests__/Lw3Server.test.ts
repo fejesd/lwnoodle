@@ -370,3 +370,38 @@ test('open non-existing node', async () => {
   await waitForAnEvent(client, 'frame', debug, 1);
   expect(receivedMessage).toStrictEqual(['oE /SOME/NODE/NOT/EXISTS %E002:Not exists']);
 });
+
+test('CHG messages should send to the opened node upon changes', async () => {
+  server.PATH.TO.MY.NODE.Ab = 1 as any;
+  server.PATH.TO.YOUR.NODE.Ab = 1 as any;
+
+  client.write('OPEN /PATH/TO/MY/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['o- /PATH/TO/MY/NODE']);
+
+  receivedMessage = [];
+  server.PATH.TO.MY.NODE.Ab = 1 as any;
+  server.PATH.TO.YOUR.NODE.Ab = 2 as any;
+  server.PATH.TO.MY.NODE.Ab = 2 as any;
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/MY/NODE.Ab=2']);
+
+  receivedMessage = [];
+  server.PATH.TO.MY.NODE.Ab = { value: 'test' } as any;
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/MY/NODE.Ab=test']);
+
+  receivedMessage = [];
+  server.PATH.TO.MY.NODE.NewProp = 'hello' as any;
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/MY/NODE.NewProp=hello']);
+
+  receivedMessage = [];
+  client.write('CLOSE /PATH/TO/MY/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['c- /PATH/TO/MY/NODE']);
+
+  receivedMessage = [];
+  server.PATH.TO.MY.NODE.NewProp = 'bye' as any;
+  expect(waitForAnEvent(client, 'frame', debug, 1)).rejects.toEqual('timeout');
+});

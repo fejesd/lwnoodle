@@ -14,7 +14,7 @@ export async function waitForAnEvent(obj: EventEmitter, eventName: string, debug
     const timer = setTimeout(() => {
       obj.removeAllListeners(eventName);
       debug(`Timeout... no ${eventName} event was received`);
-      reject();
+      reject('timeout');
     }, timeout);
     const handler = () => {
       if (--count === 0) {

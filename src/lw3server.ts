@@ -18,7 +18,7 @@ export type Lw3ServerOptions = {
  * represents a server session
  */
 interface Lw3ServerSession {
-  opened: string[];
+  opened: { node: Noodle; path: string; subscriptionId: number }[];
   authenticated: boolean;
   socketId: number;
 }
@@ -72,6 +72,9 @@ export class Lw3Server extends EventEmitter {
       debug(`New connection id:${socketId}`);
     });
     this.server.on('close', (socketId: number) => {
+      this.sessions[socketId].opened.forEach((entry) => {
+        entry.node.closeListener(entry.subscriptionId);
+      });
       delete this.sessions[socketId];
       this.emit('close', socketId);
       debug(`Closed connection id:${socketId}`);
@@ -234,7 +237,7 @@ export class Lw3Server extends EventEmitter {
         if (args === '') {
           // list opened nodes
           this.sessions[socketId].opened.forEach((element) => {
-            response += 'o- ' + element + '\n';
+            response += 'o- ' + element.path + '\n';
           });
         } else {
           // open a node
@@ -247,20 +250,24 @@ export class Lw3Server extends EventEmitter {
             response += 'oE ' + args + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
             break;
           }
-          if (this.sessions[socketId].opened.includes(args)) {
+          if (_.find(this.sessions[socketId].opened, { path: args })) {
             response += 'oE ' + args + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_AlreadyExists) + '\n';
             break;
           }
-          this.sessions[socketId].opened.push(args);
+          const subscriptionId: number = node.addListener((path: string, property: string, value: any) => {
+            this.server.write(socketId, 'CHG ' + path + '.' + property + '=' + value + '\n');
+          });
+          this.sessions[socketId].opened.push({ node, path: args, subscriptionId });
           response += 'o- ' + args + '\n';
         }
       } else if (command === 'CLOSE') {
         /**
          * CLOSE  /SOME/PATH
          */
-        if (this.sessions[socketId].opened.includes(args)) {
+        if (_.find(this.sessions[socketId].opened, { path: args })) {
           this.sessions[socketId].opened = this.sessions[socketId].opened.filter((v) => {
-            return v !== args;
+            if (v.path === args) v.node.closeListener(v.subscriptionId);
+            return v.path !== args;
           });
           response += 'c- ' + args + '\n';
         } else {
