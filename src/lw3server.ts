@@ -228,7 +228,57 @@ export class Lw3Server extends EventEmitter {
          *  MAN /SOME/PATH.Prop - get a manual single prop
          *  MAN /SOME/PATH:method - get a manual single method
          */
-        /* todo */
+
+        if (args[0] !== '/') {
+          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+          break;
+        }
+        const dotPosition = args.indexOf('.');
+        if (dotPosition === -1) {
+          const semicolonPosition = args.indexOf(':');
+          if (semicolonPosition === -1) {
+            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+            break;
+          }
+          // MAN /SOME/PATH:method - get a manual single method
+          const node: NoodleServer | undefined = this.getNode(args.substring(0, semicolonPosition)) as NoodleServer;
+          if (!node) {
+            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+            break;
+          }
+          const methodName = args.substring(semicolonPosition + 1);
+          // todo: non-existent method
+          response += 'mm ' + args + '=' + node[methodName + '__method__man__'] + '\n';
+        } else {
+          const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
+          if (!node) {
+            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+            break;
+          }
+          const propName = args.substring(dotPosition + 1);
+          if (propName === '*') {
+            // getting all property and methods
+            const props = node.__properties__();
+            const methods = node.__methods__();
+            const nodename = args.substring(0, dotPosition);
+            Object.keys(props)
+              .sort()
+              .forEach((propname) => {
+                response += 'pm ' + nodename + '.' + propname + '=' + props[propname].manual + '\n';
+              });
+            methods.forEach((name) => {
+              response += 'mm' + ' ' + nodename + ':' + name + '=' + node[name + '__method__man__'] + '\n';
+            });
+          } else {
+            // getting single property
+            const prop = node.__properties__(propName);
+            if (prop === undefined) {
+              response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+              break;
+            }
+            response += 'pm ' + args + '=' + escape(prop.manual) + '\n';
+          }
+        }
       } else if (command === 'OPEN') {
         /* OPEN command has two variant:
            OPEN /SOME/PATH  - open the node

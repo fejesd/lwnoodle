@@ -303,6 +303,67 @@ test('call a method - escaping', async () => {
 });
 
 //
+// MAN
+//
+
+test('getting a methods manual', async () => {
+  server.PATH.TO.MY.NODE.concat = ((a: number) => {
+    return a;
+  }) as any;
+  server.PATH.TO.MY.NODE.concat__man__ = 'returns with the parameter' as any;
+
+  client.write('MAN /PATH/TO/MY/NODE:concat\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['mm /PATH/TO/MY/NODE:concat=returns with the parameter']);
+});
+
+test('getting a non-existent node method manual', async () => {
+
+  client.write('MAN /PATH/TO/MY/NODES:xyz\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E MAN /PATH/TO/MY/NODES:xyz %E002:Not exists']);
+});
+
+test('getting a property manual', async () => {
+  server.PATH.TO.MY.NODE.Prop = 42 as any;
+  server.PATH.TO.MY.NODE.Prop__man__ = 'some description' as any;
+
+  client.write('MAN /PATH/TO/MY/NODE.Prop\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['pm /PATH/TO/MY/NODE.Prop=some description']);
+});
+
+test('getting a non-existent node property manual', async () => {
+  client.write('MAN /PATH/TO/MY/NODES.Xyz\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E MAN /PATH/TO/MY/NODES.Xyz %E002:Not exists']);
+});
+
+test('getting all props and methods manual from a node', async () => {
+  server.PATH.MY.NODE.Prop = 42 as any;
+  server.PATH.MY.NODE.Prop__man__ = 'some description1' as any;
+  server.PATH.MY.NODE.Spec = true as any;
+  server.PATH.MY.NODE.Spec__man__ = 'some description2' as any;
+  server.PATH.MY.NODE.add = (() => {
+    /* */
+  }) as any;
+  server.PATH.MY.NODE.add__man__ = 'some description3' as any;
+  server.PATH.MY.NODE.subt = (() => {
+    /* */
+  }) as any;
+  server.PATH.MY.NODE.subt__man__ = 'some description4' as any;
+
+  client.write('MAN /PATH/MY/NODE.*\n');
+  await waitForAnEvent(client, 'frame', debug, 4);
+  expect(receivedMessage).toStrictEqual([
+    'pm /PATH/MY/NODE.Prop=some description1',
+    'pm /PATH/MY/NODE.Spec=some description2',
+    'mm /PATH/MY/NODE:add=some description3',
+    'mm /PATH/MY/NODE:subt=some description4',
+  ]);
+});
+
+//
 // OPEN / CLOSE
 //
 
