@@ -191,15 +191,15 @@ test('method call should raise an exception when junk returned', async () => {
 });
 
 //
-// addListener
+// on()
 //
 
-test('addListener should call the callback when needed', async () => {
+test('on() should call the callback when needed', async () => {
   expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
   mockedResponse = 'o- /PATH/TO/TEST/NODE';
 
   const cb1 = jest.fn();
-  const id1 = await noodle.PATH.TO.TEST.NODE.addListener(cb1);
+  const id1 = await noodle.PATH.TO.TEST.NODE.on(cb1);
   expect(receivedMessage).toBe(expectedMessage);
 
   server.write(-1, 'CHG /TEST/A.test1=somevalue\r\n');
@@ -219,16 +219,16 @@ test('addListener should call the callback when needed', async () => {
 
   expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
   mockedResponse = 'c- /PATH/TO/TEST/NODE';
-  await noodle.PATH.TO.TEST.NODE.closeListener(id1);
+  await noodle.PATH.TO.TEST.NODE.removeListener(id1);
   expect(receivedMessage).toBe(expectedMessage);
 });
 
-test('addListener should call the callback only with the specified property', async () => {
+test('on() should call the callback only with the specified property', async () => {
   expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
   mockedResponse = 'o- /PATH/TO/TEST/NODE';
 
   const cb1 = jest.fn();
-  const id1 = await noodle.PATH.TO.TEST.NODE.addListener(cb1, 'SignalPresent');
+  const id1 = await noodle.PATH.TO.TEST.NODE.on('SignalPresent', cb1);
   expect(receivedMessage).toBe(expectedMessage);
 
   server.write(-1, 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
@@ -248,16 +248,16 @@ test('addListener should call the callback only with the specified property', as
 
   expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
   mockedResponse = 'c- /PATH/TO/TEST/NODE';
-  await noodle.PATH.TO.TEST.NODE.closeListener(id1);
+  await noodle.PATH.TO.TEST.NODE.removeListener(id1);
   expect(receivedMessage).toBe(expectedMessage);
 });
 
-test('addListener should call the callback only with the specified property and value', async () => {
+test('on() should call the callback only with the specified property and value', async () => {
   expectedMessage = 'OPEN /PATH/TO/TEST/NODE';
   mockedResponse = 'o- /PATH/TO/TEST/NODE';
 
   const cb1 = jest.fn();
-  const id1 = await noodle.PATH.TO.TEST.NODE.addListener(cb1, 'SignalPresent=false');
+  const id1 = await noodle.PATH.TO.TEST.NODE.on('SignalPresent=false', cb1);
   expect(receivedMessage).toBe(expectedMessage);
 
   server.write(-1, 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
@@ -274,7 +274,7 @@ test('addListener should call the callback only with the specified property and 
 
   expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
   mockedResponse = 'c- /PATH/TO/TEST/NODE';
-  await noodle.PATH.TO.TEST.NODE.closeListener(id1);
+  await noodle.PATH.TO.TEST.NODE.removeListener(id1);
   expect(receivedMessage).toBe(expectedMessage);
 });
 
@@ -287,7 +287,7 @@ test('once should call the callback only once', async () => {
   mockedResponse = 'o- /PATH/TO/TEST/NODE';
 
   const cb1 = jest.fn();
-  const id1 = await noodle.PATH.TO.TEST.NODE.once(cb1, 'SignalPresent=false');
+  const id1 = await noodle.PATH.TO.TEST.NODE.once('SignalPresent=false', cb1);
   expect(receivedMessage).toBe(expectedMessage);
 
   expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
@@ -313,8 +313,8 @@ test('multiple once on same node', async () => {
 
   const cb1 = jest.fn();
   const cb2 = jest.fn();
-  await noodle.PATH.TO.TEST.NODE.once(cb1, 'SignalPresent=false');
-  await noodle.PATH.TO.TEST.NODE.once(cb2, 'SignalPresent=true');
+  await noodle.PATH.TO.TEST.NODE.once('SignalPresent=false', cb1);
+  await noodle.PATH.TO.TEST.NODE.once('SignalPresent=true', cb2);
   expect(receivedMessage).toBe(expectedMessage);
 
   expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';

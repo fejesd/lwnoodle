@@ -304,7 +304,7 @@ export class Lw3Server extends EventEmitter {
             response += 'oE ' + args + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_AlreadyExists) + '\n';
             break;
           }
-          const subscriptionId: number = node.addListener((path: string, property: string, value: any) => {
+          const subscriptionId: number = await node.on((path: string, property: string, value: any) => {
             this.server.write(socketId, 'CHG ' + path + '.' + property + '=' + value + '\n');
           });
           this.sessions[socketId].opened.push({ node, path: args, subscriptionId });
@@ -316,7 +316,7 @@ export class Lw3Server extends EventEmitter {
          */
         if (_.find(this.sessions[socketId].opened, { path: args })) {
           this.sessions[socketId].opened = this.sessions[socketId].opened.filter((v) => {
-            if (v.path === args) v.node.closeListener(v.subscriptionId);
+            if (v.path === args) v.node.removeListener(v.subscriptionId);
             return v.path !== args;
           });
           response += 'c- ' + args + '\n';

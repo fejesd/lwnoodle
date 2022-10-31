@@ -7,6 +7,44 @@ export type Noodle = {
   [method: string]: (...args: any[]) => string;
 } & {
   [property: string]: string;
+} & {
+  /**
+   * Getting notification when an event happens.
+   * Will call the callback function when a property has changed under the node.
+   * Event can be a property name or a property=value pair. Alternatively '*' or empty event will trigger for any change.
+   * @returns {Promise<number>} the number can be used remove the callback later
+   */
+  on(event: string, callback: ListenerCallback): Promise<number>;
+  /**
+   * Shorthand for .on('*', callback).
+   * Will call the callback function when any property has changed under the node.
+   * @returns {Promise<number>} the number can be used remove the callback later
+   */
+  on(callback: ListenerCallback): Promise<number>;
+
+  /**
+   * Will remove an event listener from the node.
+   * @param id either the id returned by the on() function, or the callback function itself.
+   */
+  removeListener(id: number | ListenerCallback): void;
+
+  /**
+   * Will call the callback function only once when a property has changed under the node.
+   * The event name might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true". Can be '*' as wildchar
+   * @returns {Promise<number>} the number can be used remove the callback later
+   */
+  once(event: string, callback: ListenerCallback): Promise<number>;
+
+  /**
+   * Shorthand for once('*', callback)
+   * @returns {Promise<number>} the number can be used remove the callback later
+   */
+  once(callback: ListenerCallback): Promise<number>;
+
+  /** Will resolve when a change has happened under the node.
+   * The optional condition might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true"
+   */
+  waitFor(condition?: string): Promise<string>;
 };
 
 export type NoodleClient = Noodle & {
@@ -22,24 +60,6 @@ export type NoodleClient = Noodle & {
   __close__(): void;
   /** Wait until every pending communication finishes. */
   __sync__(): Promise<void>;
-  /** Will call the callback function when any property has changed under the node.
-   * The optional condition might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true"
-   * @returns {Promise<number>} the number can be used remove the callback later
-   */
-  addListener(callback: ListenerCallback, condition?: string): Promise<number>;
-
-  /** It will remove the callback function (and also close the node if it is not needed to keep open) */
-  closeListener(id: number): Promise<void>;
-
-  /** Will call the callback function only once when a property has changed under the node.
-   * The optional condition might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true"
-   */
-  once(callback: ListenerCallback, condition?: string): Promise<number>;
-
-  /** Will resolve when a change has happened under the node.
-   * The optional condition might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true"
-   */
-  waitFor(condition?: string): Promise<string>;
 
   /** parts of the path. It is not intended for external use */
   path: string[];
@@ -133,8 +153,6 @@ export type NoodleServer = Noodle & {
   __properties__(): { [name: string]: Property };
   /** return single property */
   __properties__(s: string): Property;
-
-  addListener(callback: ListenerCallback, condition?: string): number;
 
   /** the connection object. It is not intended for external use */
   lw3server: Lw3Server;

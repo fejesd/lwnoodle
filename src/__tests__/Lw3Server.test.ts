@@ -318,7 +318,6 @@ test('getting a methods manual', async () => {
 });
 
 test('getting a non-existent node method manual', async () => {
-
   client.write('MAN /PATH/TO/MY/NODES:xyz\n');
   await waitForAnEvent(client, 'frame', debug, 1);
   expect(receivedMessage).toStrictEqual(['-E MAN /PATH/TO/MY/NODES:xyz %E002:Not exists']);
@@ -433,36 +432,36 @@ test('open non-existing node', async () => {
 });
 
 test('CHG messages should send to the opened node upon changes', async () => {
-  server.PATH.TO.MY.NODE.Ab = 1 as any;
+  server.PATH.TO.THIRD.NODE.Ab = 1 as any;
   server.PATH.TO.YOUR.NODE.Ab = 1 as any;
 
-  client.write('OPEN /PATH/TO/MY/NODE\n');
+  client.write('OPEN /PATH/TO/THIRD/NODE\n');
   await waitForAnEvent(client, 'frame', debug, 1);
-  expect(receivedMessage).toStrictEqual(['o- /PATH/TO/MY/NODE']);
+  expect(receivedMessage).toStrictEqual(['o- /PATH/TO/THIRD/NODE']);
 
   receivedMessage = [];
-  server.PATH.TO.MY.NODE.Ab = 1 as any;
+  server.PATH.TO.THIRD.NODE.Ab = 1 as any;
   server.PATH.TO.YOUR.NODE.Ab = 2 as any;
-  server.PATH.TO.MY.NODE.Ab = 2 as any;
+  server.PATH.TO.THIRD.NODE.Ab = 2 as any;
   await waitForAnEvent(client, 'frame', debug, 1);
-  expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/MY/NODE.Ab=2']);
+  expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/THIRD/NODE.Ab=2']);
 
   receivedMessage = [];
-  server.PATH.TO.MY.NODE.Ab = { value: 'test' } as any;
+  server.PATH.TO.THIRD.NODE.Ab = { value: 'test' } as any;
   await waitForAnEvent(client, 'frame', debug, 1);
-  expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/MY/NODE.Ab=test']);
+  expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/THIRD/NODE.Ab=test']);
 
   receivedMessage = [];
-  server.PATH.TO.MY.NODE.NewProp = 'hello' as any;
+  server.PATH.TO.THIRD.NODE.NewProp = 'hello' as any;
   await waitForAnEvent(client, 'frame', debug, 1);
-  expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/MY/NODE.NewProp=hello']);
+  expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/THIRD/NODE.NewProp=hello']);
 
   receivedMessage = [];
-  client.write('CLOSE /PATH/TO/MY/NODE\n');
+  client.write('CLOSE /PATH/TO/THIRD/NODE\n');
   await waitForAnEvent(client, 'frame', debug, 1);
-  expect(receivedMessage).toStrictEqual(['c- /PATH/TO/MY/NODE']);
+  expect(receivedMessage).toStrictEqual(['c- /PATH/TO/THIRD/NODE']);
 
   receivedMessage = [];
-  server.PATH.TO.MY.NODE.NewProp = 'bye' as any;
+  server.PATH.TO.THIRD.NODE.NewProp = 'bye' as any;
   expect(waitForAnEvent(client, 'frame', debug, 1)).rejects.toEqual('timeout');
 });

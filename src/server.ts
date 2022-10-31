@@ -149,9 +149,15 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
         return () => {
           t.lw3server?.close();
         };
-      case 'addListener':
+      case 'on':
       case 'once':
-        return (callback: ListenerCallback, condition?: string) => {
+        return (...args: any[]) => {
+          let callback = args[0];
+          let condition = '';
+          if (typeof args[0] === 'string') {
+            callback = args[1];
+            condition = args[0];
+          }
           let property = '';
           let value = '';
           if (condition) {
@@ -168,18 +174,20 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
             property,
             value,
           });
-          return subscriptionId;
+          return new Promise<number>((resolve, reject) => {
+            resolve(subscriptionId);
+          });
         };
       case 'waitFor': {
         return (condition?: string): Promise<void> => {
           return new Promise<void>((resolve, reject) => {
-            (NoodleServerProxyHandler as any).get(t, 'once')((path: string, property: string, value: string) => {
+            (NoodleServerProxyHandler as any).get(t, 'once')(condition, (path: string, property: string, value: string) => {
               resolve();
-            }, condition);
+            });
           });
         };
       }
-      case 'closeListener': {
+      case 'removeListener': {
         return (subscriptionId: number | ListenerCallback) => {
           let subscriptionIndex = -1;
           if (typeof subscriptionId === 'number') subscriptionIndex = _.findIndex(t.subscribers, { subscriptionId: subscriptionId as number });

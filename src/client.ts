@@ -48,19 +48,22 @@ const NoodleClientProxyHandler: ProxyHandler<NoodleClient> = {
   async apply(target: NoodleClient, ctx: string, args: any[]) {
     const last = target.path[target.path.length - 1];
     const path = '/' + target.path.slice(0, -1).join('/');
-    if (last === 'addListener') {
-      return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), args[1]);
-    } else if (last === 'closeListener') {
-      return target.lw3client.CLOSE(args[0]);
-    } else if (last === 'once') {
-      return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), args[1], 1);
-    } else if (last === 'waitFor') {
-      return new Promise<string>((resolve, reject) => {
-        target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => resolve(cbvalue), args[0], 1);
-      });
-    } else {
-      // method invocation
-      return target.lw3client.CALL(path + ':' + last, args.join(','));
+    switch (last) {
+      case 'on':
+        if (typeof args[0] === 'function') return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), '*');
+        else return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[1](cbpath, cbproperty, cbvalue), args[0]);
+      case 'once':
+        if (typeof args[0] === 'function')
+          return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), '*', 1);
+        else return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[1](cbpath, cbproperty, cbvalue), args[0], 1);
+      case 'removeListener':
+        return target.lw3client.CLOSE(args[0]);
+      case 'waitFor':
+        return new Promise<string>((resolve, reject) => {
+          target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => resolve(cbvalue), args[0], 1);
+        });
+      default:
+        return target.lw3client.CALL(path + ':' + last, args.join(','));
     }
   },
 

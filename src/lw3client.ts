@@ -394,6 +394,7 @@ export class Lw3Client extends EventEmitter {
     // todo sanity check
     if (path[path.length - 1] === '/') path = path.slice(0, -1);
     const alreadyOpen = _.findIndex(this.subscribers, { path }) !== -1;
+    if (rule === '*') rule = '';
     return new Promise<number>((resolve, reject) => {
       let property = '';
       let value = '';

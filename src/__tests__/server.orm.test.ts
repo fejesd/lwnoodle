@@ -407,17 +407,17 @@ test('get all properties by __properties__() call', () => {
 });
 
 //
-// addListener
+// on()
 //
 
-test('addListener should call the callback when needed', async () => {
+test('on() should call the callback when needed', async () => {
   root.PATH.TO.MY.NODE.Ab = 1 as any;
   root.PATH.TO.MY.NODE.Ac = 1 as any;
   root.PATH.TO.MY.NODE.SUBNODE.Ab = 1 as any;
   root.PATH.TO.ANOTHER.NODE.Ab = 1 as any;
 
   const cb1 = jest.fn();
-  const id1 = root.PATH.TO.MY.NODE.addListener(cb1);
+  const id1 = await root.PATH.TO.MY.NODE.on(cb1);
 
   root.PATH.TO.MY.NODE.SUBNODE.Ab = 1 as any;
   root.PATH.TO.MY.NODE.Ab = 2 as any;
@@ -432,15 +432,15 @@ test('addListener should call the callback when needed', async () => {
   expect(cb1.mock.calls[1][1]).toBe('New');
   expect(cb1.mock.calls[1][2]).toBe(1);
 
-  root.PATH.TO.ANOTHER.NODE.closeListener(id1);
+  root.PATH.TO.ANOTHER.NODE.removeListener(id1);
 });
 
-test('addListener should filter the property when needed', async () => {
+test('on() should filter the property when needed', async () => {
   root.PATH.TO.MY.NODE.Something = 1 as any;
   root.PATH.TO.MY.NODE.Interested = 1 as any;
 
   const cb1 = jest.fn();
-  const id1 = root.PATH.TO.MY.NODE.addListener(cb1, 'Interested');
+  const id1 = await root.PATH.TO.MY.NODE.on('Interested', cb1);
 
   root.PATH.TO.MY.NODE.Something = 2 as any;
   root.PATH.TO.MY.NODE.Interested = 2 as any;
@@ -450,15 +450,15 @@ test('addListener should filter the property when needed', async () => {
   expect(cb1.mock.calls[0][1]).toBe('Interested');
   expect(cb1.mock.calls[0][2]).toBe(2);
 
-  root.PATH.TO.ANOTHER.NODE.closeListener(id1);
+  root.PATH.TO.ANOTHER.NODE.removeListener(id1);
 });
 
-test('addListener should filter the property and value when needed', async () => {
+test('on() should filter the property and value when needed', async () => {
   root.PATH.TO.MY.NODE.Something = 1 as any;
   root.PATH.TO.MY.NODE.Interested = 1 as any;
 
   const cb1 = jest.fn();
-  const id1 = root.PATH.TO.MY.NODE.addListener(cb1, 'Interested=3');
+  const id1 = await root.PATH.TO.MY.NODE.on('Interested=3', cb1);
 
   root.PATH.TO.MY.NODE.Something = 2 as any;
   root.PATH.TO.MY.NODE.Interested = 2 as any;
@@ -469,24 +469,24 @@ test('addListener should filter the property and value when needed', async () =>
   expect(cb1.mock.calls[0][1]).toBe('Interested');
   expect(cb1.mock.calls[0][2]).toBe(3);
 
-  root.PATH.TO.ANOTHER.NODE.closeListener(id1);
+  root.PATH.TO.ANOTHER.NODE.removeListener(id1);
 });
 
-test('closeListener should remove the callback', async () => {
+test('removeListener should remove the callback', async () => {
   root.PATH.TO.MY.NODE.Ab = 1 as any;
 
   const cb1 = jest.fn();
   const cb2 = jest.fn();
-  const id1 = root.PATH.TO.MY.NODE.addListener(cb1);
-  const id2 = root.PATH.TO.ANOTHER.NODE.addListener(cb1);
+  const id1 = await root.PATH.TO.MY.NODE.on(cb1);
+  const id2 = await root.PATH.TO.ANOTHER.NODE.on(cb1);
 
   root.PATH.TO.MY.NODE.Ab = 2 as any;
 
-  root.PATH.TO.ANOTHER.NODE.closeListener(id1);
+  root.PATH.TO.ANOTHER.NODE.removeListener(id1);
 
   root.PATH.TO.MY.NODE.Ab = 3 as any;
 
-  root.PATH.TO.ANOTHER.NODE.closeListener(id2);
+  root.PATH.TO.ANOTHER.NODE.removeListener(id2);
 
   expect(cb1.mock.calls.length).toBe(2);
   expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/MY/NODE');
@@ -499,7 +499,7 @@ test('once should call the callback only once', async () => {
   root.PATH.TO.MY.NODE.Interested = 1 as any;
 
   const cb1 = jest.fn();
-  const id1 = root.PATH.TO.MY.NODE.once(cb1, 'Interested=3');
+  const id1 = await root.PATH.TO.MY.NODE.once('Interested=3', cb1);
 
   root.PATH.TO.MY.NODE.Something = 2 as any;
   root.PATH.TO.MY.NODE.Interested = 2 as any;
