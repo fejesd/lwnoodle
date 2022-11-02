@@ -1,4 +1,4 @@
-import { Lw3Client } from '../lw3client';
+import { LwClient } from '../lwclient';
 import { TcpServerConnection } from '../tcpserverconnection';
 import { escape, unescape } from '../escaping';
 import { sleep, waitForAnEvent, waitLinesRcv } from './helpers';
@@ -6,10 +6,10 @@ import { TcpClientConnection } from '../tcpclientconnection';
 import Debug from 'debug';
 const debug = Debug('Test');
 
-Debug.enable('TcpServerConnection,Test,Lw3Client');
+Debug.enable('TcpServerConnection,Test,LwClient');
 
 let server: TcpServerConnection;
-let client: Lw3Client;
+let client: LwClient;
 let expectedMessage: string;
 let mockedResponse: string;
 let receivedMessage: string;
@@ -17,7 +17,7 @@ let receivedMessage: string;
 beforeAll(async () => {
   server = new TcpServerConnection(6107);
   await waitForAnEvent(server, 'listening', debug);
-  client = new Lw3Client(new TcpClientConnection());
+  client = new LwClient(new TcpClientConnection());
   await waitForAnEvent(client, 'connect', debug);
   server.on('frame', (id, data) => {
     const parts = data.split('#');
@@ -41,7 +41,7 @@ beforeEach(() => {
   debug('');
 });
 
-test('GET should perform the lw3 command and return with the result', async () => {
+test('GET should perform the lw command and return with the result', async () => {
   const testbenches = [
     ['/TEST/NODE.property', 'pr /TEST/NODE.property=test\\nvalue', 'test\nvalue'],
     ['/TEST/NODE.property', 'pw /TEST/NODE.property=test\\tvalue', 'test\tvalue'],

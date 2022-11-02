@@ -1,5 +1,5 @@
-import { Lw3Client } from './lw3client';
-import { Lw3Server } from './lw3server';
+import { LwClient } from './lwclient';
+import { LwServer } from './lwserver';
 
 export type ListenerCallback = (path: string, property: string, value: any) => void;
 
@@ -64,57 +64,57 @@ export type NoodleClient = Noodle & {
   /** parts of the path. It is not intended for external use */
   path: string[];
   /** the connection object. It is not intended for external use */
-  lw3client: Lw3Client;
+  lwclient: LwClient;
 };
 
-export enum Lw3ErrorCodes {
-  Lw3ErrorCodes_None = 0,
-  Lw3ErrorCodes_Syntax = 1,
-  Lw3ErrorCodes_NotFound = 2,
-  Lw3ErrorCodes_AlreadyExists = 3,
-  Lw3ErrorCodes_InvalidValue = 4,
-  Lw3ErrorCodes_IllegalParamCount = 5,
-  Lw3ErrorCodes_IllegalOperation = 6,
-  Lw3ErrorCodes_AccessDenied = 7,
-  Lw3ErrorCodes_Timeout = 8,
-  Lw3ErrorCodes_CommandTooLong = 9,
-  Lw3ErrorCodes_InternalError = 10,
-  Lw3ErrorCodes_NotImplemented = 11,
-  Lw3ErrorCodes_NodeDisabled = 12,
+export enum LwErrorCodes {
+  LwErrorCodes_None = 0,
+  LwErrorCodes_Syntax = 1,
+  LwErrorCodes_NotFound = 2,
+  LwErrorCodes_AlreadyExists = 3,
+  LwErrorCodes_InvalidValue = 4,
+  LwErrorCodes_IllegalParamCount = 5,
+  LwErrorCodes_IllegalOperation = 6,
+  LwErrorCodes_AccessDenied = 7,
+  LwErrorCodes_Timeout = 8,
+  LwErrorCodes_CommandTooLong = 9,
+  LwErrorCodes_InternalError = 10,
+  LwErrorCodes_NotImplemented = 11,
+  LwErrorCodes_NodeDisabled = 12,
 }
 
-export class Lw3Error extends Error {
-  lw3Error: Lw3ErrorCodes;
-  constructor(error: Lw3ErrorCodes) {
-    super(Lw3Error.getErrorCodeString(error));
-    this.lw3Error = error;
+export class LwError extends Error {
+  lwError: LwErrorCodes;
+  constructor(error: LwErrorCodes) {
+    super(LwError.getErrorCodeString(error));
+    this.lwError = error;
   }
 
-  static getErrorCodeString(errorcode: Lw3ErrorCodes): string {
+  static getErrorCodeString(errorcode: LwErrorCodes): string {
     switch (errorcode) {
-      case Lw3ErrorCodes.Lw3ErrorCodes_Syntax:
+      case LwErrorCodes.LwErrorCodes_Syntax:
         return 'Syntax error';
-      case Lw3ErrorCodes.Lw3ErrorCodes_NotFound:
+      case LwErrorCodes.LwErrorCodes_NotFound:
         return 'Not exists';
-      case Lw3ErrorCodes.Lw3ErrorCodes_AlreadyExists:
+      case LwErrorCodes.LwErrorCodes_AlreadyExists:
         return 'Already exists';
-      case Lw3ErrorCodes.Lw3ErrorCodes_InvalidValue:
+      case LwErrorCodes.LwErrorCodes_InvalidValue:
         return 'Invalid value';
-      case Lw3ErrorCodes.Lw3ErrorCodes_IllegalParamCount:
+      case LwErrorCodes.LwErrorCodes_IllegalParamCount:
         return 'Illegal parameter count';
-      case Lw3ErrorCodes.Lw3ErrorCodes_IllegalOperation:
+      case LwErrorCodes.LwErrorCodes_IllegalOperation:
         return 'Illegal operation';
-      case Lw3ErrorCodes.Lw3ErrorCodes_AccessDenied:
+      case LwErrorCodes.LwErrorCodes_AccessDenied:
         return 'Access denied';
-      case Lw3ErrorCodes.Lw3ErrorCodes_Timeout:
+      case LwErrorCodes.LwErrorCodes_Timeout:
         return 'Timeout';
-      case Lw3ErrorCodes.Lw3ErrorCodes_CommandTooLong:
+      case LwErrorCodes.LwErrorCodes_CommandTooLong:
         return 'Command too long';
-      case Lw3ErrorCodes.Lw3ErrorCodes_InternalError:
+      case LwErrorCodes.LwErrorCodes_InternalError:
         return 'Internal error';
-      case Lw3ErrorCodes.Lw3ErrorCodes_NotImplemented:
+      case LwErrorCodes.LwErrorCodes_NotImplemented:
         return 'Not implemented';
-      case Lw3ErrorCodes.Lw3ErrorCodes_NodeDisabled:
+      case LwErrorCodes.LwErrorCodes_NodeDisabled:
         return 'Node disabled or standby mode active';
       default:
         return 'Unknown error';
@@ -126,7 +126,7 @@ export interface Property {
   value: string;
   manual: string;
   rw: boolean;
-  setter?: (value: string) => Lw3ErrorCodes /* setter function will be called if available instead of setting value directly */;
+  setter?: (value: string) => LwErrorCodes /* setter function will be called if available instead of setting value directly */;
   getter?: () => string /* getter function will override the value string */;
 }
 
@@ -141,8 +141,8 @@ export type NoodleServer = Noodle & {
 } & {
   /** parts of the path. It is not intended for external use */
   path: string[];
-  /** return an Lw3Server */
-  server: Lw3Server;
+  /** return an LwServer */
+  server: LwServer;
   /** Shutdown the server, close listening ports, close all clients */
   __close__(): void;
   /** return all subnodes */
@@ -155,5 +155,5 @@ export type NoodleServer = Noodle & {
   __properties__(s: string): Property;
 
   /** the connection object. It is not intended for external use */
-  lw3server: Lw3Server;
+  lwserver: LwServer;
 };

@@ -1,5 +1,5 @@
 import { Noodle, NoodleClient } from './noodle';
-import { Lw3Client } from './lw3client';
+import { LwClient } from './lwclient';
 import { TcpClientConnection } from './tcpclientconnection';
 import Debug from 'debug';
 const debug = Debug('NoodleClient');
@@ -20,13 +20,13 @@ class NoodleClientObject {
   clientname: string;
   /** Path for this object. (it is empty if it is on root) */
   path: string[];
-  /** Lw3 client object reference */
-  lw3client: Lw3Client;
+  /** Lw client object reference */
+  lwclient: LwClient;
 
-  constructor(name: string, path: string[], lw3client: Lw3Client) {
+  constructor(name: string, path: string[], lwclient: LwClient) {
     this.clientname = name;
     this.path = path;
-    this.lw3client = lw3client;
+    this.lwclient = lwclient;
   }
 }
 
@@ -50,20 +50,20 @@ const NoodleClientProxyHandler: ProxyHandler<NoodleClient> = {
     const path = '/' + target.path.slice(0, -1).join('/');
     switch (last) {
       case 'on':
-        if (typeof args[0] === 'function') return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), '*');
-        else return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[1](cbpath, cbproperty, cbvalue), args[0]);
+        if (typeof args[0] === 'function') return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), '*');
+        else return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[1](cbpath, cbproperty, cbvalue), args[0]);
       case 'once':
         if (typeof args[0] === 'function')
-          return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), '*', 1);
-        else return target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[1](cbpath, cbproperty, cbvalue), args[0], 1);
+          return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), '*', 1);
+        else return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[1](cbpath, cbproperty, cbvalue), args[0], 1);
       case 'removeListener':
-        return target.lw3client.CLOSE(args[0]);
+        return target.lwclient.CLOSE(args[0]);
       case 'waitFor':
         return new Promise<string>((resolve, reject) => {
-          target.lw3client.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => resolve(cbvalue), args[0], 1);
+          target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => resolve(cbvalue), args[0], 1);
         });
       default:
-        return target.lw3client.CALL(path + ':' + last, args.join(','));
+        return target.lwclient.CALL(path + ':' + last, args.join(','));
     }
   },
 
@@ -72,15 +72,15 @@ const NoodleClientProxyHandler: ProxyHandler<NoodleClient> = {
     if (key in target) return target[key as keyof typeof target]; // make target fields accessible. Is this needed?
     if (key === '__close__') {
       return () => {
-        target.lw3client.close();
+        target.lwclient.close();
       };
     } else if (key === '__sync__') {
-      return target.lw3client.sync.bind(target.lw3client);
+      return target.lwclient.sync.bind(target.lwclient);
     } else if (key === '__connect__') {
       return (): Promise<void> => {
         return new Promise((resolve, reject) => {
-          if (target.lw3client.connection.isConnected()) resolve();
-          else target.lw3client.connection.once('connect', () => resolve());
+          if (target.lwclient.connection.isConnected()) resolve();
+          else target.lwclient.connection.once('connect', () => resolve());
         });
       };
     }
@@ -89,12 +89,12 @@ const NoodleClientProxyHandler: ProxyHandler<NoodleClient> = {
     const isMethod = key[0] === key[0].toLowerCase() || key.indexOf('__method__') !== -1;
     if ((isNode || isMethod) && !castedToProperty) {
       key = key.replace('__method__', '').replace('__node__', '');
-      const node = new NoodleClientObject(target.name, target.path.slice().concat(key), target.lw3client);
+      const node = new NoodleClientObject(target.name, target.path.slice().concat(key), target.lwclient);
       return new Proxy(obj2fun(node), NoodleClientProxyHandler);
     } else {
       key = key.replace('__prop__', '');
       const path = '/' + target.path.join('/');
-      const value = target.lw3client.GET(path + '.' + key);
+      const value = target.lwclient.GET(path + '.' + key);
       return value;
     }
   },
@@ -102,10 +102,10 @@ const NoodleClientProxyHandler: ProxyHandler<NoodleClient> = {
   set(target: NoodleClient, key: string, value: string): boolean {
     key = key.replace('__prop__', '');
     // unfortunately ProxyHandler.set should return immediately with a boolean, there is no way to make it async
-    // therefore we will catch the rejections from lw3client.SET here and drop them. __sync__() call should be used after set if error detection is important.
+    // therefore we will catch the rejections from lwclient.SET here and drop them. __sync__() call should be used after set if error detection is important.
     (async () => {
       try {
-        await target.lw3client.SET('/' + target.path.join('/') + '.' + key, value);
+        await target.lwclient.SET('/' + target.path.join('/') + '.' + key, value);
       } catch (e) {
         debug('SET command has been rejected');
       }
@@ -126,7 +126,7 @@ export const noodleClient = (options: NoodleClientParameters | string = 'localho
   const clientObj: NoodleClientObject = new NoodleClientObject(
     options.name || 'default',
     [],
-    new Lw3Client(new TcpClientConnection(options.host, options.port), options.waitresponses),
+    new LwClient(new TcpClientConnection(options.host, options.port), options.waitresponses),
   );
   debug('Noodle client created');
   return new Proxy(obj2fun(clientObj), NoodleClientProxyHandler) as NoodleClient;
@@ -166,7 +166,7 @@ export const live = async (node: NoodleClient) => {
       obj.cache[property] = value;
     };
   })(liveObj);
-  liveObj.subscriptionId = await node.lw3client.OPEN('/' + node.path.join('/'), updater);
-  await node.lw3client.FETCHALL('/' + node.path.join('/'), updater);
+  liveObj.subscriptionId = await node.lwclient.OPEN('/' + node.path.join('/'), updater);
+  await node.lwclient.FETCHALL('/' + node.path.join('/'), updater);
   return new Proxy(obj2fun(liveObj), LiveObjProxyHandler);
 };

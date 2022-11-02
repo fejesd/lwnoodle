@@ -1,5 +1,5 @@
 /**
- * Escape string according to lw3 protocol
+ * Escape string according to lw protocol
  * @param value string to escape
  */
 export function escape(value: string): string {
@@ -20,7 +20,7 @@ export function escape(value: string): string {
 }
 
 /**
- * Unescape string according to lw3 protocol
+ * Unescape string according to lw protocol
  * @param value string to escape
  */
 export function unescape(value: string): string {

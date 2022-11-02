@@ -3,13 +3,13 @@ import { TcpServerConnection } from './tcpserverconnection';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
 import * as _ from 'lodash';
-import { Lw3ErrorCodes, Lw3Error, Noodle, NoodleServer, Property } from './noodle';
+import { LwErrorCodes as LwErrorCodes, LwError as LwError, Noodle, NoodleServer, Property } from './noodle';
 import { escape, unescape } from './escaping';
 import { convertValue } from './common';
 
-const debug = Debug('Lw3Server');
+const debug = Debug('LwServer');
 
-export type Lw3ServerOptions = {
+export type LwServerOptions = {
   name?: string;
   port?: number;
 };
@@ -17,13 +17,13 @@ export type Lw3ServerOptions = {
 /**
  * represents a server session
  */
-interface Lw3ServerSession {
+interface LwServerSession {
   opened: { node: Noodle; path: string; subscriptionId: number }[];
   authenticated: boolean;
   socketId: number;
 }
 
-export interface Lw3Server {
+export interface LwServer {
   on(event: 'error', listener: (e: Error) => void): this;
   on(event: 'serverclose', listener: () => void): this;
   on(event: 'connect' | 'close', listener: (socketId: number) => void): this;
@@ -31,21 +31,21 @@ export interface Lw3Server {
 }
 
 /**
- * Implements the LW3 Server at protocol level
+ * Implements the LW Server at protocol level
  */
-export class Lw3Server extends EventEmitter {
+export class LwServer extends EventEmitter {
   /** root node */
   root: NoodleServer;
   /** session data */
-  sessions: { [socketId: number]: Lw3ServerSession };
+  sessions: { [socketId: number]: LwServerSession };
   server: TcpServerConnection;
-  options: Lw3ServerOptions;
+  options: LwServerOptions;
 
-  static getErrorHeader(errorcode: Lw3ErrorCodes): string {
-    return '%E' + ('00' + (errorcode as number).toString()).substr(-3) + ':' + Lw3Error.getErrorCodeString(errorcode);
+  static getErrorHeader(errorcode: LwErrorCodes): string {
+    return '%E' + ('00' + (errorcode as number).toString()).substr(-3) + ':' + LwError.getErrorCodeString(errorcode);
   }
 
-  constructor(options: Lw3ServerOptions) {
+  constructor(options: LwServerOptions) {
     super();
     this.sessions = [];
     this.options = options;
@@ -113,14 +113,14 @@ export class Lw3Server extends EventEmitter {
          *  GET /SOME/PATH.Prop - get a single prop
          */
         if (args[0] !== '/') {
-          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
           break;
         }
         const dotPosition = args.indexOf('.');
         if (dotPosition === -1) {
           // GET /SOME/PATH   - get subnodes
           const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
-          if (!node) response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+          if (!node) response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
           const subnodes: string[] = node?.__nodes__();
           subnodes?.forEach((element) => {
             response += 'n- ' + args + '/' + element + '\n';
@@ -129,7 +129,7 @@ export class Lw3Server extends EventEmitter {
           const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
           const propName = args.substring(dotPosition + 1);
           if (!node) {
-            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
             break;
           }
           if (propName === '*') {
@@ -149,7 +149,7 @@ export class Lw3Server extends EventEmitter {
             // getting single property
             const prop = node.__properties__(propName);
             if (prop === undefined) {
-              response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
               break;
             }
             response += 'p' + (prop.rw ? 'w' : 'r') + ' ' + args + '=' + escape(prop.value) + '\n';
@@ -162,23 +162,23 @@ export class Lw3Server extends EventEmitter {
         const dotPosition = args.indexOf('.');
         const eqPosition = args.indexOf('=');
         if (dotPosition === -1 || eqPosition === -1) {
-          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
           break;
         }
         const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
         const propName = args.substring(dotPosition + 1, eqPosition);
         const value = args.substring(eqPosition + 1);
         if (!node) {
-          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
           break;
         }
         let property = node.__properties__(propName);
         if (property === undefined) {
-          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
           break;
         }
         if (!(property as Property).rw) {
-          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_AccessDenied) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_AccessDenied) + '\n';
           break;
         }
         (node as any)[propName + '__prop__'] = unescape(value);
@@ -191,12 +191,12 @@ export class Lw3Server extends EventEmitter {
         const semicolonPosition = args.indexOf(':');
         const bracketPosition = args.indexOf('(');
         if (semicolonPosition === -1 || bracketPosition <= semicolonPosition || args[args.length - 1] !== ')') {
-          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
           break;
         }
         const node: NoodleServer | undefined = this.getNode(args.substring(0, semicolonPosition)) as NoodleServer;
         if (!node) {
-          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
           break;
         }
         const methodname = args.substring(semicolonPosition + 1, bracketPosition);
@@ -205,7 +205,7 @@ export class Lw3Server extends EventEmitter {
           .split(',')
           .map((x) => convertValue(unescape(x)));
         if (node.__methods__().indexOf(methodname) === -1) {
-          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
           break;
         }
         try {
@@ -214,11 +214,11 @@ export class Lw3Server extends EventEmitter {
           if (!resp) response += 'mO ' + args.substring(0, bracketPosition) + '\n';
           else response += 'mO ' + args.substring(0, bracketPosition) + '=' + escape(resp.toString()) + '\n';
         } catch (e) {
-          if ((e as Lw3Error).lw3Error) {
-            response += 'mE ' + args.substring(0, bracketPosition) + ' ' + Lw3Server.getErrorHeader((e as Lw3Error).lw3Error) + '\n';
+          if ((e as LwError).lwError) {
+            response += 'mE ' + args.substring(0, bracketPosition) + ' ' + LwServer.getErrorHeader((e as LwError).lwError) + '\n';
           } else {
             response +=
-              'mE ' + args.substring(0, bracketPosition) + '=' + escape((e as Error).message) + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_InternalError) + '\n';
+              'mE ' + args.substring(0, bracketPosition) + '=' + escape((e as Error).message) + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_InternalError) + '\n';
           }
         }
       } else if (command === 'MAN') {
@@ -230,20 +230,20 @@ export class Lw3Server extends EventEmitter {
          */
 
         if (args[0] !== '/') {
-          response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
           break;
         }
         const dotPosition = args.indexOf('.');
         if (dotPosition === -1) {
           const semicolonPosition = args.indexOf(':');
           if (semicolonPosition === -1) {
-            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
             break;
           }
           // MAN /SOME/PATH:method - get a manual single method
           const node: NoodleServer | undefined = this.getNode(args.substring(0, semicolonPosition)) as NoodleServer;
           if (!node) {
-            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
             break;
           }
           const methodName = args.substring(semicolonPosition + 1);
@@ -252,7 +252,7 @@ export class Lw3Server extends EventEmitter {
         } else {
           const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
           if (!node) {
-            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
             break;
           }
           const propName = args.substring(dotPosition + 1);
@@ -273,7 +273,7 @@ export class Lw3Server extends EventEmitter {
             // getting single property
             const prop = node.__properties__(propName);
             if (prop === undefined) {
-              response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
               break;
             }
             response += 'pm ' + args + '=' + escape(prop.manual) + '\n';
@@ -292,16 +292,16 @@ export class Lw3Server extends EventEmitter {
         } else {
           // open a node
           if (args[0] !== '/') {
-            response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
             break;
           }
           const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
           if (node === undefined) {
-            response += 'oE ' + args + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+            response += 'oE ' + args + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
             break;
           }
           if (_.find(this.sessions[socketId].opened, { path: args })) {
-            response += 'oE ' + args + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_AlreadyExists) + '\n';
+            response += 'oE ' + args + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_AlreadyExists) + '\n';
             break;
           }
           const subscriptionId: number = await node.on((path: string, property: string, value: any) => {
@@ -322,11 +322,11 @@ export class Lw3Server extends EventEmitter {
           response += 'c- ' + args + '\n';
         } else {
           // not subscribed
-          response += 'cE ' + args + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_NotFound) + '\n';
+          response += 'cE ' + args + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
         }
       } else {
         // unknown command
-        response += '-E ' + msg + ' ' + Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax) + '\n';
+        response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
       }
     } while (false);
     if (signature) response += '}\n';

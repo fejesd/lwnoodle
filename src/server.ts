@@ -1,5 +1,5 @@
 import { ListenerCallback, Method, Noodle, NoodleServer, Property } from './noodle';
-import { Lw3Server, Lw3ServerOptions } from './lw3server';
+import { LwServer, LwServerOptions } from './lwserver';
 import { convertValue, obj2fun } from './common';
 import Debug from 'debug';
 import * as _ from 'lodash';
@@ -7,7 +7,7 @@ const debug = Debug('NoodleServer');
 
 /**
  * Storing subscriptions.
- * TODO: make this common with lw3client SubscriberEntry
+ * TODO: make this common with lwclient SubscriberEntry
  */
 interface SubscriberEntry {
   path: string;
@@ -28,8 +28,8 @@ export class NoodleServerObject {
   declare clientname: string;
   /** Path for this object. (it is empty if it is on root) */
   declare path: string[];
-  /** Lw3 client object reference */
-  declare lw3server?: Lw3Server;
+  /** Lw client object reference */
+  declare lwserver?: LwServer;
   /** Container for properties */
   declare properties: { [name: string]: Property };
   /** Container for methods */
@@ -40,10 +40,10 @@ export class NoodleServerObject {
   declare subscribers: SubscriberEntry[];
   declare subscriptionIdCounter: number;
 
-  constructor(name: string = 'default', path: string[] = [], lw3server?: Lw3Server) {
+  constructor(name: string = 'default', path: string[] = [], lwserver?: LwServer) {
     Object.defineProperty(this, 'clientname', { enumerable: false, configurable: true, value: name });
     Object.defineProperty(this, 'path', { enumerable: false, configurable: true, value: path });
-    Object.defineProperty(this, 'lw3server', { enumerable: false, configurable: true, value: lw3server });
+    Object.defineProperty(this, 'lwserver', { enumerable: false, configurable: true, value: lwserver });
     Object.defineProperty(this, 'properties', { enumerable: false, configurable: true, writable: true, value: {} });
     Object.defineProperty(this, 'nodes', { enumerable: false, configurable: true, value: {} });
     Object.defineProperty(this, 'methods', { enumerable: false, configurable: true, value: {} });
@@ -90,7 +90,7 @@ export class NoodleServerObject {
           (this.nodes[element] as unknown as NoodleServerObject).fromJSON(json[element as keyof typeof json]);
         } else {
           // todo: a method or property exists with that name
-          this.nodes[element] = new NoodleServerObject(this.clientname, this.path.slice().concat(element), this.lw3server) as unknown as Noodle;
+          this.nodes[element] = new NoodleServerObject(this.clientname, this.path.slice().concat(element), this.lwserver) as unknown as Noodle;
           (this.nodes[element] as unknown as NoodleServerObject).fromJSON(json[element as keyof typeof json]);
         }
       } else if (keytype === 'function') {
@@ -147,10 +147,10 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
           else return t.properties;
         };
       case 'server':
-        return t.lw3server?.server;
+        return t.lwserver?.server;
       case '__close__':
         return () => {
-          t.lw3server?.close();
+          t.lwserver?.close();
         };
       case 'on':
       case 'once':
@@ -249,7 +249,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
         }; // return with an empty callable function
       }
       debug(`Create ${mainkey} node in ${t.path.at(-1)}`);
-      const node = (t.nodes[mainkey] = new NoodleServerObject(t.clientname, t.path.slice().concat(key), t.lw3server) as any);
+      const node = (t.nodes[mainkey] = new NoodleServerObject(t.clientname, t.path.slice().concat(key), t.lwserver) as any);
       return new Proxy(node, NoodleServerProxyHandler);
     } else {
       // request a non-existing property. Creating it with empty string as default
@@ -332,7 +332,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
     if (isNode && !castedToProperty) {
       // node
       if (isManual || isRw) return false;
-      t.nodes[mainkey] = new NoodleServerObject(t.clientname, t.path.slice().concat(mainkey), t.lw3server) as any;
+      t.nodes[mainkey] = new NoodleServerObject(t.clientname, t.path.slice().concat(mainkey), t.lwserver) as any;
       (t.nodes[mainkey] as unknown as NoodleServerObject).fromJSON(value);
     } else if (isMethod && !castedToProperty) {
       // method
@@ -413,8 +413,8 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
   },
 };
 
-export const noodleServer = (options: number | Lw3ServerOptions = 6107): NoodleServer => {
-  let opts: Lw3ServerOptions = {};
+export const noodleServer = (options: number | LwServerOptions = 6107): NoodleServer => {
+  let opts: LwServerOptions = {};
   if (typeof options === 'number') {
     opts = {
       port: options,
@@ -425,7 +425,7 @@ export const noodleServer = (options: number | Lw3ServerOptions = 6107): NoodleS
     opts.name = options.name || 'default';
   }
 
-  const server = new Lw3Server(opts);
+  const server = new LwServer(opts);
 
   debug('Noodle server created');
   return server.root;

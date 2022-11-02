@@ -1,14 +1,14 @@
-import { Lw3Server } from '../lw3server';
+import { LwServer } from '../lwserver';
 import { TcpClientConnection } from '../tcpclientconnection';
 import Debug from 'debug';
 import { sleep, waitForAnEvent, waitLinesRcv } from './helpers';
 import { extendWith, isArguments } from 'lodash';
-import { Lw3Client } from '../lw3client';
+import { LwClient } from '../lwclient';
 import { noodleServer } from '../server';
-import { Lw3Error, Lw3ErrorCodes, NoodleServer } from '../noodle';
+import { LwError, LwErrorCodes, NoodleServer } from '../noodle';
 const debug = Debug('Test');
 
-Debug.enable('TcpClientConnection,TcpServerConnection,Test,Lw3Server,NoodleServer');
+Debug.enable('TcpClientConnection,TcpServerConnection,Test,LwServer,NoodleServer');
 
 let server: NoodleServer;
 let client: TcpClientConnection;
@@ -42,8 +42,8 @@ beforeEach(() => {
 });
 
 test('error message forming', () => {
-  expect(Lw3Server.getErrorHeader(Lw3ErrorCodes.Lw3ErrorCodes_Syntax)).toBe('%E001:Syntax error');
-  expect(Lw3Server.getErrorHeader(100 as Lw3ErrorCodes)).toBe('%E100:Unknown error');
+  expect(LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax)).toBe('%E001:Syntax error');
+  expect(LwServer.getErrorHeader(100 as LwErrorCodes)).toBe('%E100:Unknown error');
 });
 
 test('syntax error response', async () => {
@@ -272,9 +272,9 @@ test('call a method - number parameters', async () => {
   expect(receivedMessage).toStrictEqual(['mO /PATH/TO/MY/NODE:subtract=8']);
 });
 
-test('call a method - lw3 error', async () => {
+test('call a method - Lw error', async () => {
   server.PATH.TO.MY.NODE.subtract = ((a: number, b: number) => {
-    throw new Lw3Error(Lw3ErrorCodes.Lw3ErrorCodes_InvalidValue);
+    throw new LwError(LwErrorCodes.LwErrorCodes_InvalidValue);
   }) as any;
 
   client.write('CALL /PATH/TO/MY/NODE:subtract(10,2)\n');
