@@ -73,12 +73,15 @@ export class NoodleServerObject {
         // property
         if (element in this.properties) {
           // existing property
+          const oldvalue = this.properties[element].value;
           if (this.properties[element].setter) this.properties[element].setter?.bind(this.properties[element])(json[element as keyof typeof json].toString());
           else this.properties[element].value = json[element as keyof typeof json].toString();
+          if (oldvalue !== this.properties[element].value) this.handleCallbacks(element, this.properties[element].value);
         } else {
           // create new property
           // todo: a node or method exists with this name?
           this.properties[element] = { rw: false, manual: '', value: json[element as keyof typeof json].toString() };
+          this.handleCallbacks(element, this.properties[element].value);
         }
       } else if (keytype === 'object') {
         // node
@@ -187,14 +190,14 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
           });
         };
       }
-      case 'removeListener': {
+      case 'removeListener':
+      case 'off':
         return (subscriptionId: number | ListenerCallback) => {
           let subscriptionIndex = -1;
           if (typeof subscriptionId === 'number') subscriptionIndex = _.findIndex(t.subscribers, { subscriptionId: subscriptionId as number });
           else if (typeof subscriptionId === 'function') subscriptionIndex = _.findIndex(t.subscribers, { callback: subscriptionId as ListenerCallback });
           if (subscriptionIndex !== -1) t.subscribers.splice(subscriptionIndex, 1);
         };
-      }
     }
     let $ = false;
     if (key[0] === '$') {

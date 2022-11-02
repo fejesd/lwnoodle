@@ -435,6 +435,54 @@ test('on() should call the callback when needed', async () => {
   root.PATH.TO.ANOTHER.NODE.removeListener(id1);
 });
 
+test('on() should call the callback too on changes when values are updated from JOSN', async () => {
+  root.PATH = {
+    NODE: {
+      Alfa: 'Test',
+      Beta: 'Hello',
+      ONE: { Omega: 'Ohm' },
+      TWO: { Zeta: 'zeta' },
+      testmethod: () => {
+        return 42;
+      },
+    },
+  } as any;
+
+  const cb1 = jest.fn();
+  const id1 = await root.PATH.NODE.on(cb1);
+  const id2 = await root.PATH.NODE.ONE.on(cb1);
+  const id3 = await root.PATH.NODE.TWO.on(cb1);
+
+  root.PATH = {
+    NODE: {
+      Alfa: 'Test',
+      Beta: 'Bello',
+      ONE: { Omega: 'Ohm' },
+      TWO: { Zeta: 'zeta' },
+    },
+  } as any;
+
+  expect(cb1.mock.calls.length).toBe(1);
+  expect(cb1.mock.calls[0][0]).toBe('/PATH/NODE');
+  expect(cb1.mock.calls[0][1]).toBe('Beta');
+  expect(cb1.mock.calls[0][2]).toBe('Bello');
+
+  root.PATH = {
+    NODE: {
+      New: 'Hey',
+    },
+  } as any;
+
+  expect(cb1.mock.calls.length).toBe(2);
+  expect(cb1.mock.calls[1][0]).toBe('/PATH/NODE');
+  expect(cb1.mock.calls[1][1]).toBe('New');
+  expect(cb1.mock.calls[1][2]).toBe('Hey');
+
+  root.PATH.NODE.off(cb1);
+  root.PATH.NODE.ONE.off(cb1);
+  root.PATH.NODE.TWO.off(cb1);
+});
+
 test('on() should filter the property when needed', async () => {
   root.PATH.TO.MY.NODE.Something = 1 as any;
   root.PATH.TO.MY.NODE.Interested = 1 as any;
