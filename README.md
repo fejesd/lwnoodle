@@ -6,14 +6,12 @@
 ![code coverage statements](coverage/badge-statements.svg)
 ![code coverage branches](coverage/badge-branches.svg)
 
+# LwNoodle
 
-# LW3 client for Node
+LwNoodle is a server-client architecture based library where the server represents different status, settings and callable functions in a tree-organized structure and arbitrary number of clients can read / modify / call these items. Instead of synchronizing the whole tree, LwNoodle clients read only the requested information. If the client is interested of a change of some values, listeners can be added instead of polling values.
+LwNoodle provide a nice dynamic object-relational-model syntax, while supporting typescript enables nice code-completion in your favorite IDE. 
 
-*DISCLAIMER: This is not an official repository, just a hobby project to learn Node. There are no guarantees that it will work as expected and as there is no official support. please use it on your own responsibility.*
-
-More about LW3 Protocol: https://lightware.com/pub/media/lightware/filedownloader/file/White-Paper/Lightware_s_Open_API_Environment_v3.pdf
-
-## Basic usage
+## Example
 
 Install the module from npm:
 
@@ -21,22 +19,69 @@ Install the module from npm:
 $ npm install lwnoodle
 ```
 
-Create your first noodle client:
+Server side:
 
 ```javascript
 const lwnoodle = require('lwnoodle');
 
-:
-const noodle = lwnoodle.NoodleClient('192.168.0.1');  
+const server = lwnoodle.noodleServer('192.168.0.1');  
 
-// you might want to wait while the connection created. You need to make an await:
-
-await noodle.__connect__();
+server.APPLICATION.Name = 'My Application';
+server.LED.setRGB = (r,g,b) => { /* do something with r,g,b values */}
+server.AUDIO.SoundLevel = 50;
+server.AUDIO.on('SoundLevel', (path, prop, value)=>{ /* do something with the new value when it has changed*/})
+setInterval(()=>{ server.APPLICATION.STATUS.Time = Date.now(); }, 1000);    // update APPLICATION.STATUS.Time in every second
 ```
 
-This library uses ES6 proxies to mimic the structure of the LW3 protocol. Just use it the instinctive way:
+And on client side:
 
-Getting properties:
+```javascript
+const lwnoodle = require('lwnoodle');
+
+const noodle = lwnoodle.noodleClient('192.168.0.1');  
+
+await noodle.__connect__();  // you might want to wait while the connection created. You need to make an await
+
+console.log(await noodle.APPLICATION.Name); // 'My Application'
+noodle.LED.setRGB(10,20,30); // call the function on the server
+noodle.AUDIO.SoundLevel = 50;   // Update sound level. Server-side callback listener will be called
+noodle.APPLICATION.STATUS.on('Time', (path, prop, value)=>{ console.log(value); }); // will print the new values of timestamp
+```
+
+# Features
+
+* Tree like structure, freely extendable by custom nodes and leafs. Leafs are properties and methods.
+* Properties can be read-only or readable/writable for the clients
+* Methods can have arbitrary number of parameters
+* Data types for properties can be strings, numbers, boolean or lists
+* Arbitrary number of clients can connect
+* A client can listen for arbitrary number of nodes / properties* 
+* All methods / properties can have optionally a description (manual), which can be queried by the clients. 
+* Typescript support
+
+## Protocol
+
+By default, LW3 protocol is used for client-server communication, so it can be used to communicate with devices / softwares supporting LW3 protocol. In the future, other protocols might be added. 
+
+More about LW3 Protocol: https://lightware.com/pub/media/lightware/filedownloader/file/White-Paper/Lightware_s_Open_API_Environment_v3.pdf
+
+*DISCLAIMER: This project is not officially supported by Lightware. There are no guarantee that it will work in your production environment*
+
+# Client reference
+
+noodleClient will create a client connection:
+
+```javascript
+
+const noodle = noodleClient('192.168.0.10');        
+
+const noodle = noodleClient({host: '192.168.0.10', port: '1010'});        
+
+const noodle = noodleClient({host: '192.168.0.10', waitresponses:true});  // will wait response before sending the next request to the server. Used for debugging.
+
+```
+
+## Getting / setting properties
 
 ```javascript
 //Getting properties. Return values are casted to string, boolean, number or Array<string> based on the value
@@ -49,13 +94,16 @@ if (await noodle.MEDIA.GPIO.P7.InputState) {
 ```
 
 Setting properties:
+
 ```javascript
 noodle.MEDIA.GPIO.P1.State = 'High';
 
-//setting is done in async way in the background. If you need to wait while it completes, please use:
+//setting is done in async manner in the background. If you need to wait while it completes, please use:
 
 await noodle.__sync__();
 ```
+
+## Methods
 
 Call methods:
 
@@ -71,34 +119,47 @@ You can watch for changes:
 ```javascript
 // Add listener functions
 
-noodle.MEDIA.PORTS.I1.addListener((path,property,value)=>{
-    :
+noodle.MEDIA.PORTS.I1.on('SignalPresent', (path,property,value)=>{
+    // will be called when 'SignalPresent' property has been changed
 });
 
-noodle.MEDIA.PORTS.I1.addListener('SignalPresent', (path,property,value)=>{
-    :
+noodle.MEDIA.PORTS.I1.on('SignalPresent=true', (path,property,value)=>{
+    // will be called when 'SignalPresent' property has been changed to true
 });
 
-noodle.MEDIA.PORTS.I1.addListener('SignalPresent=true', (path,property,value)=>{
-    :
+noodle.MEDIA.PORTS.I1.on('*', (path,property,value)=>{
+    // will called on any changes on MEDIA.PORTS.I1
 });
 
-// or just add a one time listener
-
-noodle.MEDIA.PORTS.I1.once('SignalPresent', (path,property,value)=>{
-    :
+noodle.MEDIA.PORTS.I1.on((path,property,value)=>{
+    // same as above, you can just omit the first parameter
 });
-
-// wait for an event
-
-await noodle.MEDIA.PORTS.I1.waitFor('SignalPresent=true');
 
 ```
 
-You can create a local synchronized copy of a node which can be used without avait
+Or just add a one time listener:
 
 ```javascript
-const mynode = lwnoodle.live(noodle.MANAGEMENT.DATETIME);
+
+noodle.MEDIA.PORTS.I1.once('SignalPresent', (path,property,value)=>{
+    // will be called only once
+});
+
+```
+
+You can wait for an event with waitFor
+
+```javascript
+await noodle.MEDIA.PORTS.I1.waitFor('SignalPresent=true');
+```
+
+## Synchronize a node to the client
+
+When you request for a property, it needs to be async as it will trigger communication between client and server. Sometimes you need a faster, real-time response.
+By creating live object, you will have a local copy of the node. Please note, that subnodes will be not synchronized.
+
+```javascript
+const mynode = lwnoodle.live(noodle.APPLICATION.STATUS);
 
 // then use it anytime later
 
@@ -106,9 +167,92 @@ console.log(mynode.Time); //Time property will hold the actual value, kept updat
 
 ```
 
-## Naming conventions
+# Server
 
-The library relies on name conventions, that Property names shall be CamelCase, nodes shall be UPPERCASE, methods are lowerCamelCase. You can force casting:
+noodleServer will create a server object which starts listening immediately:
+
+```javascript
+
+const server = noodleServer();          // default port number is 6107
+
+const server = noodleServer(6107);      // port number
+
+const server = noodleServer({port: 6107}); // port number
+
+```
+
+# Defining nodes, properties, methods
+
+Just define them:
+
+```javascript
+
+server.PATH.TO.MY.NODE.MyProperty = 'something';
+
+server.PATH.TO.MY.NODE.myMethod = (a,b) => { return a+b; };
+
+```
+
+You can define the methods and properties via a json:
+
+```javascript
+
+server.PATH.TO.MY.NODE.MyProperty = {value:'something', manual:'this is my property', rw: false};
+
+server.PATH.TO.MY.NODE.myMethod = {func:myFunction, manual:'this is my property'};
+
+```
+
+Or you can modify read-write flag / description this way:
+
+```javascript
+server.PATH.TO.MY.NODE.MyProperty = 'something';
+server.PATH.TO.MY.NODE.MyProperty__rw__ = false;
+server.PATH.TO.MY.NODE.MyProperty__manual_ = 'this is my property';
+```
+
+## Callbacks
+
+You can set up callback listeners, which are called when the property is modified either by server or client:
+
+```javascript
+
+server.PATH.TO.MY.NODE.on('MyProperty', (path, property, value)=>{ /* */});
+server.PATH.TO.MY.NODE.on('MyProperty=watchedValue', (path, property, value)=>{ /* */});
+server.PATH.TO.MY.NODE.on('*', (path, property, value)=>{ /* */});  // will trigger on any changes
+server.PATH.TO.MY.NODE.on((path, property, value)=>{ /* */});  // same as above
+
+server.PATH.TO.MY.NODE.once('MyProperty', (path, property, value)=>{ /* */});  // will trigger once
+
+await server.PATH.TO.MY.NODE.waitFor('MyProperty=watchedValue');    // wait for a change
+
+```
+
+## JSON conversions
+
+Getting / modifying a single property might be inefficient as lots of magic stuff is involved in the background. If you need to read / write multiple properties, it is better to convert it to/from JSON.
+
+```javascript
+
+server.MY.SETTINGS = {
+    Led1: True,
+    Led2: False,
+    Volume: 12,    
+    LCD: {
+        Brightness: 50,
+        Title: 'Hello'
+    }
+}
+
+server.MY.SETTINGS.toJSON()    // will return the same thing
+
+```
+
+# Naming conventions
+
+The library relies on name conventions: nodes shall be UPPERCASE, Property names shall be CamelCase, methods are lowerCamelCase. 
+
+Also you can force casting if needed:
 
 ```javascript
 console.log(noodle.DATE.time__property__)           //by adding __property__, this will behave as a property
@@ -116,7 +260,7 @@ noodle.DATE.Apply__method__();                      //cast to method
 noodle.MANAGEMENT.Settings__node__.Enabled=true;    //cast to node
 ```
 
-## Use with typescript
+# Use with typescript
 
 Type definition is included in the package, so you will have nice code completion with your IDE. 
 

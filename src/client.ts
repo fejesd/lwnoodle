@@ -53,8 +53,7 @@ const NoodleClientProxyHandler: ProxyHandler<NoodleClient> = {
         if (typeof args[0] === 'function') return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), '*');
         else return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[1](cbpath, cbproperty, cbvalue), args[0]);
       case 'once':
-        if (typeof args[0] === 'function')
-          return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), '*', 1);
+        if (typeof args[0] === 'function') return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), '*', 1);
         else return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[1](cbpath, cbproperty, cbvalue), args[0], 1);
       case 'removeListener':
         return target.lwclient.CLOSE(args[0]);
