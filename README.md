@@ -167,7 +167,7 @@ console.log(mynode.Time); //Time property will hold the actual value, kept updat
 
 ```
 
-# Server
+# Server reference
 
 noodleServer will create a server object which starts listening immediately:
 
@@ -181,7 +181,7 @@ const server = noodleServer({port: 6107}); // port number
 
 ```
 
-# Defining nodes, properties, methods
+## Defining nodes, properties, methods
 
 Just define them:
 
