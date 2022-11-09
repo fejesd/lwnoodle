@@ -314,7 +314,7 @@ test('getting a methods manual', async () => {
 
   client.write('MAN /PATH/TO/MY/NODE:concat\n');
   await waitForAnEvent(client, 'frame', debug, 1);
-  expect(receivedMessage).toStrictEqual(['mm /PATH/TO/MY/NODE:concat=returns with the parameter']);
+  expect(receivedMessage).toStrictEqual(['mm /PATH/TO/MY/NODE:concat returns with the parameter']);
 });
 
 test('getting a non-existent node method manual', async () => {
@@ -329,7 +329,7 @@ test('getting a property manual', async () => {
 
   client.write('MAN /PATH/TO/MY/NODE.Prop\n');
   await waitForAnEvent(client, 'frame', debug, 1);
-  expect(receivedMessage).toStrictEqual(['pm /PATH/TO/MY/NODE.Prop=some description']);
+  expect(receivedMessage).toStrictEqual(['pm /PATH/TO/MY/NODE.Prop some description']);
 });
 
 test('getting a non-existent node property manual', async () => {
@@ -355,10 +355,10 @@ test('getting all props and methods manual from a node', async () => {
   client.write('MAN /PATH/MY/NODE.*\n');
   await waitForAnEvent(client, 'frame', debug, 4);
   expect(receivedMessage).toStrictEqual([
-    'pm /PATH/MY/NODE.Prop=some description1',
-    'pm /PATH/MY/NODE.Spec=some description2',
-    'mm /PATH/MY/NODE:add=some description3',
-    'mm /PATH/MY/NODE:subt=some description4',
+    'pm /PATH/MY/NODE.Prop some description1',
+    'pm /PATH/MY/NODE.Spec some description2',
+    'mm /PATH/MY/NODE:add some description3',
+    'mm /PATH/MY/NODE:subt some description4',
   ]);
 });
 

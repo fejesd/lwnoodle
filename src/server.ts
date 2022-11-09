@@ -419,10 +419,12 @@ export const noodleServer = (options: number | LwServerOptions = 6107): NoodleSe
     opts = {
       port: options,
       name: 'default',
+      host: 'localhost',
     };
   } else {
     opts.port = options.port || 6107;
     opts.name = options.name || 'default';
+    opts.host = options.host || 'localhost';
   }
 
   const server = new LwServer(opts);

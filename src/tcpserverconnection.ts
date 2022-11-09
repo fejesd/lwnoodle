@@ -24,14 +24,14 @@ export class TcpServerConnection extends EventEmitter {
   socketcount: number;
   frameLimiter: string;
 
-  constructor(port: number) {
+  constructor(port: number, host = 'localhost') {
     super();
     this.server = new Server();
     this.server.on('error', this.serverError.bind(this));
     this.server.on('connection', this.serverConnection.bind(this));
     this.server.on('close', this.serverClose.bind(this));
     this.server.on('listening', this.serverListen.bind(this));
-    this.server.listen({ port, host: 'localhost', exclusive: true });
+    this.server.listen({ port, host, exclusive: true });
     this.sockets = {};
     this.socketcount = 0;
     this.frameLimiter = '\n';
@@ -89,7 +89,7 @@ export class TcpServerConnection extends EventEmitter {
       const messages = this.sockets[socketId].inputbuffer.split(this.frameLimiter);
       for (let i = 0; i < messages.length - 1; i++) {
         debug(`< ${messages[i]}`);
-        this.emit('frame', socketId, messages[i]);
+        this.emit('frame', socketId, messages[i].replace('\r', ''));
       }
       this.sockets[socketId].inputbuffer = messages[messages.length - 1];
       if (this.sockets[socketId].inputbuffer.length > 1e6) {

@@ -186,7 +186,7 @@ export class LwClient extends EventEmitter {
   /* Called when an asynv CHG command is received */
   private chgRcv(data: string): void {
     // parse incoming line
-    data = data.substring(4, data.length - 1);
+    data = data.substring(4, data.length);
     const eq = data.search('=');
     if (eq === -1) {
       debug(`Strange message: ${data}`); // TODO: better errorhandling

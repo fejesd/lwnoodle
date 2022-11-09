@@ -98,7 +98,7 @@ export class TcpClientConnection extends ClientConnection {
     const messages = this.inputbuffer.split(this.frameLimiter);
     for (let i = 0; i < messages.length - 1; i++) {
       debug(`< ${messages[i]}`);
-      this.emit('frame', messages[i]);
+      this.emit('frame', messages[i].replace('\r', ''));
     }
     this.inputbuffer = messages[messages.length - 1];
     if (this.inputbuffer.length > 1e6) {

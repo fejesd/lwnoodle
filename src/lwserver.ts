@@ -12,6 +12,7 @@ const debug = Debug('LwServer');
 export type LwServerOptions = {
   name?: string;
   port?: number;
+  host?: string;
 };
 
 /**
@@ -49,7 +50,7 @@ export class LwServer extends EventEmitter {
     super();
     this.sessions = [];
     this.options = options;
-    this.server = new TcpServerConnection(this.options.port || 6107);
+    this.server = new TcpServerConnection(this.options.port || 6107, options.host || 'localhost');
     this.server.on('listening', () => {
       debug(`Server started`);
       this.emit('listening');
@@ -94,7 +95,7 @@ export class LwServer extends EventEmitter {
     debug(msg);
     if (msg[4] === '#') {
       signature = true;
-      response = '{' + msg.substring(0, 4) + '\n';
+      response = '{' + msg.substring(0, 4) + '\r\n';
       msg = msg.substring(5);
     } else signature = false;
     const firstSpace = msg.indexOf(' ');
@@ -113,23 +114,24 @@ export class LwServer extends EventEmitter {
          *  GET /SOME/PATH.Prop - get a single prop
          */
         if (args[0] !== '/') {
-          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
           break;
         }
         const dotPosition = args.indexOf('.');
         if (dotPosition === -1) {
           // GET /SOME/PATH   - get subnodes
           const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
-          if (!node) response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+          if (!node) response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
           const subnodes: string[] = node?.__nodes__();
+          if (args === '/') args = '';
           subnodes?.forEach((element) => {
-            response += 'n- ' + args + '/' + element + '\n';
+            response += 'n- ' + args + '/' + element + '\r\n';
           });
         } else {
           const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
           const propName = args.substring(dotPosition + 1);
           if (!node) {
-            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
             break;
           }
           if (propName === '*') {
@@ -140,19 +142,19 @@ export class LwServer extends EventEmitter {
             Object.keys(props)
               .sort()
               .forEach((propname) => {
-                response += 'p' + (props[propname].rw ? 'w' : 'r') + ' ' + nodename + '.' + propname + '=' + escape(props[propname].value) + '\n';
+                response += 'p' + (props[propname].rw ? 'w' : 'r') + ' ' + nodename + '.' + propname + '=' + escape(props[propname].value) + '\r\n';
               });
             methods.forEach((name) => {
-              response += 'm-' + ' ' + nodename + ':' + name + '\n';
+              response += 'm-' + ' ' + nodename + ':' + name + '\r\n';
             });
           } else {
             // getting single property
             const prop = node.__properties__(propName);
             if (prop === undefined) {
-              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
               break;
             }
-            response += 'p' + (prop.rw ? 'w' : 'r') + ' ' + args + '=' + escape(prop.value) + '\n';
+            response += 'p' + (prop.rw ? 'w' : 'r') + ' ' + args + '=' + escape(prop.value) + '\r\n';
           }
         }
       } else if (command === 'SET') {
@@ -162,28 +164,28 @@ export class LwServer extends EventEmitter {
         const dotPosition = args.indexOf('.');
         const eqPosition = args.indexOf('=');
         if (dotPosition === -1 || eqPosition === -1) {
-          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
           break;
         }
         const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
         const propName = args.substring(dotPosition + 1, eqPosition);
         const value = args.substring(eqPosition + 1);
         if (!node) {
-          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
           break;
         }
         let property = node.__properties__(propName);
         if (property === undefined) {
-          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
           break;
         }
         if (!(property as Property).rw) {
-          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_AccessDenied) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_AccessDenied) + '\r\n';
           break;
         }
         (node as any)[propName + '__prop__'] = unescape(value);
         property = node.__properties__(propName);
-        response += 'p' + (property.rw ? 'w' : 'r') + ' ' + args.substring(0, eqPosition) + '=' + escape(property.value) + '\n';
+        response += 'p' + (property.rw ? 'w' : 'r') + ' ' + args.substring(0, eqPosition) + '=' + escape(property.value) + '\r\n';
       } else if (command === 'CALL') {
         /**
          * CALL command syntax:  CALL /NODE/PATH:method(param1,param2,...)
@@ -191,12 +193,12 @@ export class LwServer extends EventEmitter {
         const semicolonPosition = args.indexOf(':');
         const bracketPosition = args.indexOf('(');
         if (semicolonPosition === -1 || bracketPosition <= semicolonPosition || args[args.length - 1] !== ')') {
-          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
           break;
         }
         const node: NoodleServer | undefined = this.getNode(args.substring(0, semicolonPosition)) as NoodleServer;
         if (!node) {
-          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
           break;
         }
         const methodname = args.substring(semicolonPosition + 1, bracketPosition);
@@ -205,20 +207,20 @@ export class LwServer extends EventEmitter {
           .split(',')
           .map((x) => convertValue(unescape(x)));
         if (node.__methods__().indexOf(methodname) === -1) {
-          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
           break;
         }
         try {
           debug(methodarguments);
           const resp = await node[methodname + '__method__'](...methodarguments);
-          if (!resp) response += 'mO ' + args.substring(0, bracketPosition) + '\n';
-          else response += 'mO ' + args.substring(0, bracketPosition) + '=' + escape(resp.toString()) + '\n';
+          if (!resp) response += 'mO ' + args.substring(0, bracketPosition) + '\r\n';
+          else response += 'mO ' + args.substring(0, bracketPosition) + '=' + escape(resp.toString()) + '\r\n';
         } catch (e) {
           if ((e as LwError).lwError) {
-            response += 'mE ' + args.substring(0, bracketPosition) + ' ' + LwServer.getErrorHeader((e as LwError).lwError) + '\n';
+            response += 'mE ' + args.substring(0, bracketPosition) + ' ' + LwServer.getErrorHeader((e as LwError).lwError) + '\r\n';
           } else {
             response +=
-              'mE ' + args.substring(0, bracketPosition) + '=' + escape((e as Error).message) + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_InternalError) + '\n';
+              'mE ' + args.substring(0, bracketPosition) + '=' + escape((e as Error).message) + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_InternalError) + '\r\n';
           }
         }
       } else if (command === 'MAN') {
@@ -230,29 +232,29 @@ export class LwServer extends EventEmitter {
          */
 
         if (args[0] !== '/') {
-          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
           break;
         }
         const dotPosition = args.indexOf('.');
         if (dotPosition === -1) {
           const semicolonPosition = args.indexOf(':');
           if (semicolonPosition === -1) {
-            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
+            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
             break;
           }
           // MAN /SOME/PATH:method - get a manual single method
           const node: NoodleServer | undefined = this.getNode(args.substring(0, semicolonPosition)) as NoodleServer;
           if (!node) {
-            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
             break;
           }
           const methodName = args.substring(semicolonPosition + 1);
           // todo: non-existent method
-          response += 'mm ' + args + '=' + node[methodName + '__method__man__'] + '\n';
+          response += 'mm ' + args + ' ' + node[methodName + '__method__man__'] + '\r\n';
         } else {
           const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
           if (!node) {
-            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
             break;
           }
           const propName = args.substring(dotPosition + 1);
@@ -264,19 +266,19 @@ export class LwServer extends EventEmitter {
             Object.keys(props)
               .sort()
               .forEach((propname) => {
-                response += 'pm ' + nodename + '.' + propname + '=' + props[propname].manual + '\n';
+                response += 'pm ' + nodename + '.' + propname + ' ' + props[propname].manual + '\r\n';
               });
             methods.forEach((name) => {
-              response += 'mm' + ' ' + nodename + ':' + name + '=' + node[name + '__method__man__'] + '\n';
+              response += 'mm' + ' ' + nodename + ':' + name + ' ' + node[name + '__method__man__'] + '\r\n';
             });
           } else {
             // getting single property
             const prop = node.__properties__(propName);
             if (prop === undefined) {
-              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
               break;
             }
-            response += 'pm ' + args + '=' + escape(prop.manual) + '\n';
+            response += 'pm ' + args + ' ' + escape(prop.manual) + '\r\n';
           }
         }
       } else if (command === 'OPEN') {
@@ -287,28 +289,28 @@ export class LwServer extends EventEmitter {
         if (args === '') {
           // list opened nodes
           this.sessions[socketId].opened.forEach((element) => {
-            response += 'o- ' + element.path + '\n';
+            response += 'o- ' + element.path + '\r\n';
           });
         } else {
           // open a node
           if (args[0] !== '/') {
-            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
+            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
             break;
           }
           const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
           if (node === undefined) {
-            response += 'oE ' + args + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+            response += 'oE ' + args + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
             break;
           }
           if (_.find(this.sessions[socketId].opened, { path: args })) {
-            response += 'oE ' + args + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_AlreadyExists) + '\n';
+            response += 'oE ' + args + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_AlreadyExists) + '\r\n';
             break;
           }
           const subscriptionId: number = await node.on((path: string, property: string, value: any) => {
-            this.server.write(socketId, 'CHG ' + path + '.' + property + '=' + value + '\n');
+            this.server.write(socketId, 'CHG ' + path + '.' + property + '=' + value + '\r\n');
           });
           this.sessions[socketId].opened.push({ node, path: args, subscriptionId });
-          response += 'o- ' + args + '\n';
+          response += 'o- ' + args + '\r\n';
         }
       } else if (command === 'CLOSE') {
         /**
@@ -319,17 +321,17 @@ export class LwServer extends EventEmitter {
             if (v.path === args) v.node.removeListener(v.subscriptionId);
             return v.path !== args;
           });
-          response += 'c- ' + args + '\n';
+          response += 'c- ' + args + '\r\n';
         } else {
           // not subscribed
-          response += 'cE ' + args + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\n';
+          response += 'cE ' + args + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
         }
       } else {
         // unknown command
-        response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\n';
+        response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
       }
     } while (false);
-    if (signature) response += '}\n';
+    if (signature) response += '}\r\n';
     this.server.write(socketId, response);
   }
 
@@ -342,6 +344,8 @@ export class LwServer extends EventEmitter {
     const path = s.split('/');
     if (path[0]) return undefined;
     let node: any = this.root;
+    if (path.length === 1) return undefined;
+    if (path.length === 2 && path[1] === '') return node; // root
     for (let i = 1; i < path.length; i++) {
       if (!path[i]) return undefined;
       node = node[('$' + path[i]) as keyof NoodleServerObject];
