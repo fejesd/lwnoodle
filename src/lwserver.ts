@@ -308,7 +308,7 @@ export class LwServer extends EventEmitter {
           }
           const subscriptionId: number = await node.on((path: string, property: string, value: any) => {
             this.server.write(socketId, 'CHG ' + path + '.' + property + '=' + value + '\r\n');
-          });
+          }, args);
           this.sessions[socketId].opened.push({ node, path: args, subscriptionId });
           response += 'o- ' + args + '\r\n';
         }

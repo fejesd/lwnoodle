@@ -33,4 +33,8 @@ server.MEDIA.PORTS.O1.SETTINGS.on('EnableSomething',(path,prop,val)=>console.log
 server.MANAGEMENT.hello = () => { console.log('greetings'); return 'Hi'; }
 server.MEDIA.XP.switchAll = (inp) => { server.MEDIA.XP.DestinationConnectionStatus=(inp+';').repeat(5); return 'ok'; }
 
+//symlink
+server.DEVICES.COUNTER = server.MANAGEMENT.UPTIME
+server.DEVICES.INPUT = server.MEDIA.PORTS.O1
+
 console.log('running...');

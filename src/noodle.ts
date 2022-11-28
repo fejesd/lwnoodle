@@ -12,15 +12,17 @@ export type Noodle = {
    * Getting notification when an event happens.
    * Will call the callback function when a property has changed under the node.
    * Event can be a property name or a property=value pair. Alternatively '*' or empty event will trigger for any change.
+   * Passing path is optional. You need to pass the full path only if you use on(..) function with a symlink
    * @returns {Promise<number>} the number can be used remove the callback later
    */
-  on(event: string, callback: ListenerCallback): Promise<number>;
+  on(event: string, callback: ListenerCallback, path?: string): Promise<number>;
   /**
    * Shorthand for .on('*', callback).
    * Will call the callback function when any property has changed under the node.
+   * When you call on an symlink, you need to pass the full path
    * @returns {Promise<number>} the number can be used remove the callback later
    */
-  on(callback: ListenerCallback): Promise<number>;
+  on(callback: ListenerCallback, path?: string): Promise<number>;
 
   /**
    * Will remove an event listener from the node.
@@ -33,13 +35,13 @@ export type Noodle = {
    * The event name might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true". Can be '*' as wildchar
    * @returns {Promise<number>} the number can be used remove the callback later
    */
-  once(event: string, callback: ListenerCallback): Promise<number>;
+  once(event: string, callback: ListenerCallback, path?: string): Promise<number>;
 
   /**
    * Shorthand for once('*', callback)
    * @returns {Promise<number>} the number can be used remove the callback later
    */
-  once(callback: ListenerCallback): Promise<number>;
+  once(callback: ListenerCallback, path?: string): Promise<number>;
 
   /** Will resolve when a change has happened under the node.
    * The optional condition might hold a property name or even a property value, eg. "SignalPresent" or "SignalPresent=true"

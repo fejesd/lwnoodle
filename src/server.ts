@@ -109,8 +109,11 @@ export class NoodleServerObject {
   handleCallbacks(property: string, value: string) {
     this.subscribers.forEach((entry: SubscriberEntry, index, object) => {
       if ((!entry.property || entry.property === property) && (!entry.value || entry.value === value)) {
-        debug('callback ', this.path, property, value);
-        entry.callback('/' + this.path.join('/'), property, convertValue(value));
+        let path = '';
+        if (entry.path.length) path = entry.path;
+        else path = '/' + this.path.join('/');
+        debug('callback ', path, property, value);
+        entry.callback(path, property, convertValue(value));
         if (entry.count > 0) {
           entry.count--;
           if (entry.count === 0) {
@@ -126,6 +129,10 @@ export class NoodleServerObject {
 export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
   get(t: NoodleServerObject, key: string): any {
     switch (key) {
+      case '__type__':
+        return 'NoodleServerObject';
+      case '__inner__':
+        return t;
       case 'toJSON':
         const ret = t.toJSON();
         return () => ret;
@@ -157,9 +164,13 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
         return (...args: any[]) => {
           let callback = args[0];
           let condition = '';
+          let path = '';
           if (typeof args[0] === 'string') {
             callback = args[1];
             condition = args[0];
+            if (typeof args[2] === 'string') path = args[2];
+          } else {
+            if (typeof args[1] === 'string') path = args[1];
           }
           let property = '';
           let value = '';
@@ -170,7 +181,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
           }
           const subscriptionId = ++t.subscriptionIdCounter;
           t.subscribers.push({
-            path: '',
+            path,
             callback,
             subscriptionId,
             count: key === 'once' ? 1 : -1,
@@ -333,7 +344,9 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       // node
       if (isManual || isRw) return false;
       t.nodes[mainkey] = new NoodleServerObject(t.clientname, t.path.slice().concat(mainkey), t.lwserver) as any;
-      (t.nodes[mainkey] as unknown as NoodleServerObject).fromJSON(value);
+      if ((value as any).__type__ === 'NoodleServerObject') {
+        t.nodes[mainkey] = (value as any).__inner__ as Noodle;
+      } else (t.nodes[mainkey] as unknown as NoodleServerObject).fromJSON(value);
     } else if (isMethod && !castedToProperty) {
       // method
       if (isRw) return false;
