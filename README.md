@@ -57,6 +57,7 @@ noodle.APPLICATION.STATUS.on('Time', (path, prop, value)=>{ console.log(value); 
 * Arbitrary number of clients can connect
 * A client can listen for arbitrary number of nodes / properties* 
 * All methods / properties can have optionally a description (manual), which can be queried by the clients. 
+* Symbolic links can be created within the tree
 * Typescript support
 
 ## Protocol
@@ -247,6 +248,19 @@ server.MY.SETTINGS = {
 server.MY.SETTINGS.toJSON()    // will return the same thing
 
 ```
+
+## Creating symbolic links
+
+You can create any number of symbolic links within the tree. Example:
+
+```javascript
+server.DEVICES.DEV1.Name = 'Some important device';
+
+server.BUILDINGS.MAIN.ROOM1.DISPLAY = server.DEVICES.DEV1;  
+
+// server.BUILDINGS.MAIN.ROOM1.DISPLAY.Name and server.DEVICES.DEV1.Name refers to the same object.  
+```
+
 
 # Naming conventions
 

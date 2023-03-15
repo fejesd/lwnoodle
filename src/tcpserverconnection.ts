@@ -1,6 +1,7 @@
 import { Socket, Server } from 'net';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
+import { ServerConnection } from './serverconnection';
 const debug = Debug('TcpServerConnection');
 
 interface ServerSocket {
@@ -10,15 +11,7 @@ interface ServerSocket {
   outputbuffer: string[];
 }
 
-export declare interface TcpServerConnection {
-  on(event: 'listening' | 'serverclose', listener: () => void): this;
-  on(event: 'error', listener: (e: Error) => void): this;
-  on(event: 'connect' | 'close', listener: (socketId: number) => void): this;
-  on(event: 'socketerror', listener: (socketId: number, e: Error) => void): this;
-  on(event: 'frame', listener: (socketId: number, msg: string) => void): this;
-}
-
-export class TcpServerConnection extends EventEmitter {
+export class TcpServerConnection extends EventEmitter implements ServerConnection {
   server: Server;
   sockets: { [id: number]: ServerSocket };
   socketcount: number;
