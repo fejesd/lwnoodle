@@ -3,6 +3,14 @@ import { ClientConnection } from './clientconnection';
 import Debug from 'debug';
 const debug = Debug('WsClientConnection');
 
+export interface WsClientConnectionOptions {
+  host?: string;
+  port?: number;
+  secure?: boolean;
+  connectionRetryTimeout?: number;
+  rejectUnauthorized?: boolean;
+}
+
 export class WsClientConnection extends ClientConnection {
   private ws: WebSocket | null = null;
   host: string;
@@ -13,23 +21,38 @@ export class WsClientConnection extends ClientConnection {
   private connectionRetryTimeout: number;
   private inputbuffer: string;
   private frameLimiter: string;
+  secure: boolean;
+  rejectUnauthorized: boolean;
 
-  constructor(host: string = 'localhost', port: number = 80) {
+  constructor(p1: string | WsClientConnectionOptions, p2?: number) {
     super();
-    this.host = host;
-    this.port = port;
+    if (typeof p1 === 'string') {
+      // string
+      this.host = p1;
+      this.port = p2 || 6107;
+      this.secure = false;
+      this.connectionRetryTimeout = 1000;
+      this.rejectUnauthorized = false;
+    } else {
+      // WsClientConnectionOptions
+      this.host = p1.host || 'localhost';
+      this.port = p1.port || 6107;
+      this.secure = p1.secure || false;
+      this.rejectUnauthorized = p1.rejectUnauthorized || false;
+      this.connectionRetryTimeout = p1.connectionRetryTimeout || 1000;
+    }
     this.connected = false;
     this.connecting = false;
-    this.connectionRetryTimeout = 1000; // retry after 1 secs
     this.frameLimiter = '\n';
     this.shutdown = false;
     this.inputbuffer = '';
     this.startConnect(); // start connection
-    debug('WSClientConnection created');
+    if (this.secure) debug('Secure WSClientConnection created');
+    else debug('WSClientConnection created');
   }
 
   startConnect() {
-    this.ws = new WebSocket(`ws://${this.host}:${this.port}`);
+    this.ws = new WebSocket(this.secure ? `wss://${this.host}:${this.port}` : `ws://${this.host}:${this.port}`, { rejectUnauthorized: this.rejectUnauthorized });
     this.ws.on('open', () => this.onOpen());
     this.ws.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => this.onMessage(data, isBinary));
     this.ws.on('close', () => this.onClose());

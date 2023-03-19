@@ -1,9 +1,18 @@
 import { WebSocket, WebSocketServer } from 'ws';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
-import { TcpServerConnection } from './tcpserverconnection';
 import { ServerConnection } from './serverconnection';
+import { Server as HttpsServer, createServer } from 'https';
+
 const debug = Debug('WsServerConnection');
+
+export interface WsServerOptions {
+  host: string;
+  port?: number;
+  secure?: boolean;
+  key?: string | Buffer;
+  cert?: string | Buffer;
+}
 
 interface ServerWsSocket {
   socket: WebSocket;
@@ -16,19 +25,51 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
   server: WebSocketServer;
   sockets: { [id: number]: ServerWsSocket };
   socketcount: number;
+  secure: boolean;
+  key: string | undefined;
+  cert: string | undefined;
+  httpsserver: HttpsServer | undefined;
 
-  constructor(port: number, host: string = 'localhost') {
+  /**
+   * Creates a new WsServerConnection.
+   * @param port The port to listen on.
+   * @param host The host to listen on.
+   * @param secure If true, use TLS.
+   * @param key The private key to use for TLS.
+   * @param cert The certificate to use for TLS.
+   */
+  constructor(p1: WsServerOptions | number, p2?: string) {
     super();
-    this.port = port;
-    this.host = host;
-    this.server = new WebSocketServer({ port: this.port, host: this.host });
-    this.server.on('connection', (ws: WebSocket) => this.onConnection(ws));
-    this.server.on('error', (e) => this.onError(e));
-    this.server.on('listening', () => this.onListening());
-    this.server.on('close', () => this.onClose());
+    if (typeof p1 === 'object') {
+      // WsServerOptions
+      this.port = p1.port || 6107;
+      this.host = p1.host || 'localhost';
+      this.secure = p1.secure || false;
+      this.key = p1.key?.toString();
+      this.cert = p1.cert?.toString();
+    } else {
+      // number, string
+      this.port = p1 || 6107;
+      this.host = p2 || 'localhost';
+      this.secure = false;
+    }
     this.sockets = {};
     this.socketcount = 0;
-    debug('WsServerConnection created');
+    if (!this.secure) {
+      this.server = new WebSocketServer({ port: this.port, host: this.host });
+      debug('Unsecure wsServerConnection created on port ' + this.port);
+      this.server.on('listening', () => this.onListening());
+    } else {
+      this.httpsserver = createServer({ key: this.key, cert: this.cert });
+      this.httpsserver.on('listening', () => this.onListening());
+      this.server = new WebSocketServer({ server: this.httpsserver });
+      this.httpsserver.listen(this.port, this.host);
+      debug('Secure wsServerConnection created on port ' + this.port);
+      setTimeout(this.onListening.bind(this), 100);
+    }
+    this.server.on('connection', (ws: WebSocket) => this.onConnection(ws));
+    this.server.on('error', (e) => this.onError(e));
+    this.server.on('close', () => this.onClose());
   }
 
   onConnection(ws: WebSocket) {
@@ -79,6 +120,9 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
     }
   }
 
+  /**
+   * Write a message to a socket
+   */
   write(socketId: number, msg: string): void {
     if (this.sockets[socketId]) {
       this.sockets[socketId].socket.send(msg);
@@ -89,6 +133,7 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
 
   close(): void {
     this.server.close();
+    this.httpsserver?.close();
   }
 
   getConnectionCount(): number {

@@ -194,6 +194,8 @@ server.PATH.TO.MY.NODE.myMethod = (a,b) => { return a+b; };
 
 ```
 
+Methods can have arbitrary number of parameters. The return value will be sent back to the client.
+
 You can define the methods and properties via a json:
 
 ```javascript
@@ -212,6 +214,8 @@ server.PATH.TO.MY.NODE.MyProperty__rw__ = false;
 server.PATH.TO.MY.NODE.MyProperty__manual_ = 'this is my property';
 ```
 
+When use the __rw__ after the property name, then you can set the read-write flag. When you use __manual__ after the property name, then you can set the description.
+
 ## Callbacks
 
 You can set up callback listeners, which are called when the property is modified either by server or client:
@@ -223,7 +227,11 @@ server.PATH.TO.MY.NODE.on('MyProperty=watchedValue', (path, property, value)=>{ 
 server.PATH.TO.MY.NODE.on('*', (path, property, value)=>{ /* */});  // will trigger on any changes
 server.PATH.TO.MY.NODE.on((path, property, value)=>{ /* */});  // same as above
 
+When calling once, the callback will be removed after the first call:
+
 server.PATH.TO.MY.NODE.once('MyProperty', (path, property, value)=>{ /* */});  // will trigger once
+
+If you call waitFor, it will wait for a change and return the new value. It is an async function, so you need to use await. This is useful for waiting for a change in a property:
 
 await server.PATH.TO.MY.NODE.waitFor('MyProperty=watchedValue');    // wait for a change
 
