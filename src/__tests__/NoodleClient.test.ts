@@ -15,11 +15,11 @@ let noodle: NoodleClient;
 beforeAll(async () => {
   server = new TcpServerConnection(6107);
   await waitForAnEvent(server, 'listening', debug);
-  server.on('frame', (id, data) => {
+  server.on('frame', (server, id, data) => {
     const parts = data.split('#');
     receivedMessage = parts[1];
     expect(parts[1]).toBe(expectedMessage);
-    if (mockedResponse !== '') server.write(1, '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
+    if (mockedResponse !== '') server.write('', '{' + parts[0] + '\n' + mockedResponse + '\n}\n');
   });
   noodle = noodleClient();
   await noodle.__connect__();
@@ -202,11 +202,11 @@ test('on() should call the callback when needed', async () => {
   const id1 = await noodle.PATH.TO.TEST.NODE.on(cb1);
   expect(receivedMessage).toBe(expectedMessage);
 
-  server.write(-1, 'CHG /TEST/A.test1=somevalue\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
-  server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
-  server.write(-1, 'CHG /TEST/A.SignalPresent2=2\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+  server.write('', 'CHG /TEST/A.test1=somevalue\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
+  server.write('', 'CHG /TEST/A.SignalPresent=true\r\n');
+  server.write('', 'CHG /TEST/A.SignalPresent2=2\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
   await waitLinesRcv(noodle.lwclient.connection, 5);
 
   expect(cb1.mock.calls.length).toBe(2);
@@ -231,11 +231,11 @@ test('on() should call the callback only with the specified property', async () 
   const id1 = await noodle.PATH.TO.TEST.NODE.on('SignalPresent', cb1);
   expect(receivedMessage).toBe(expectedMessage);
 
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
-  server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Something=false\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
+  server.write('', 'CHG /TEST/A.SignalPresent=true\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.Something=false\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
   await waitLinesRcv(noodle.lwclient.connection, 5);
 
   expect(cb1.mock.calls.length).toBe(2);
@@ -260,11 +260,11 @@ test('on() should call the callback only with the specified property and value',
   const id1 = await noodle.PATH.TO.TEST.NODE.on('SignalPresent=false', cb1);
   expect(receivedMessage).toBe(expectedMessage);
 
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
-  server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Something=false\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
+  server.write('', 'CHG /TEST/A.SignalPresent=true\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.Something=false\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
   await waitLinesRcv(noodle.lwclient.connection, 5);
 
   expect(cb1.mock.calls.length).toBe(1);
@@ -293,9 +293,9 @@ test('once should call the callback only once', async () => {
   expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
   mockedResponse = 'c- /PATH/TO/TEST/NODE';
 
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
   await waitLinesRcv(noodle.lwclient.connection, 3);
 
   expect(cb1.mock.calls.length).toBe(1);
@@ -320,9 +320,9 @@ test('multiple once on same node', async () => {
   expectedMessage = 'CLOSE /PATH/TO/TEST/NODE';
   mockedResponse = 'c- /PATH/TO/TEST/NODE';
 
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.Connected=false\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=false\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
   await waitLinesRcv(noodle.lwclient.connection, 3);
   expect(cb1.mock.calls.length).toBe(1);
   expect(cb1.mock.calls[0][0]).toBe('/PATH/TO/TEST/NODE');
@@ -345,7 +345,7 @@ test('waitFor usage', async () => {
   let a = 0;
   setTimeout(() => {
     a++;
-    server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+    server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
   }, 1000);
 
   const res = await noodle.PATH.TO.TEST.NODE.waitFor('SignalPresent');
@@ -381,9 +381,9 @@ test('live should return immediately', async () => {
   expect(testnode.Foo).toBe(undefined);
 
   // send some update
-  server.write(-1, 'CHG /TEST/A.test1=somevalue\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.Counter=13\r\n');
-  server.write(-1, 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
+  server.write('', 'CHG /TEST/A.test1=somevalue\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.Counter=13\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE.SignalPresent=true\r\n');
   await waitLinesRcv(noodle.lwclient.connection, 3);
 
   expect(testnode.Counter).toBe(13);

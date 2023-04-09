@@ -9,12 +9,16 @@ export interface WsClientConnectionOptions {
   secure?: boolean;
   connectionRetryTimeout?: number;
   rejectUnauthorized?: boolean;
+  username?: string;
+  password?: string;
 }
 
 export class WsClientConnection extends ClientConnection {
   private ws: WebSocket | null = null;
   host: string;
   port: number;
+  username?: string;
+  password?: string;
   connected: boolean; /* is connected? */
   connecting: boolean; /* connection in progress */
   private shutdown: boolean; /* shutdown in progress */
@@ -40,6 +44,8 @@ export class WsClientConnection extends ClientConnection {
       this.secure = p1.secure || false;
       this.rejectUnauthorized = p1.rejectUnauthorized || false;
       this.connectionRetryTimeout = p1.connectionRetryTimeout || 1000;
+      this.username = p1.username;
+      this.password = p1.password;
     }
     this.connected = false;
     this.connecting = false;
@@ -52,10 +58,20 @@ export class WsClientConnection extends ClientConnection {
   }
 
   startConnect() {
-    this.ws = new WebSocket(this.secure ? `wss://${this.host}:${this.port}` : `ws://${this.host}:${this.port}`, { rejectUnauthorized: this.rejectUnauthorized });
+    if (this.shutdown) return;
+    const wsoptions: any = { rejectUnauthorized: this.rejectUnauthorized };
+    if (this.username) {
+      const auth = 'Basic ' + Buffer.from(this.username + ':' + this.password).toString('base64');
+      wsoptions['headers'] = { Authorization: auth };
+    }
+    this.ws = new WebSocket(this.secure ? `wss://${this.host}:${this.port}` : `ws://${this.host}:${this.port}`, wsoptions);
     this.ws.on('open', () => this.onOpen());
     this.ws.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => this.onMessage(data, isBinary));
     this.ws.on('close', () => this.onClose());
+    this.ws.on('error', (e) => {
+      this.emit('error', e);
+      debug('Error on socket: ' + e.message);
+    });
     this.connecting = true;
     debug('WSClientConnection connect..');
   }

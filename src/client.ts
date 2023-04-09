@@ -2,6 +2,8 @@ import { Noodle, NoodleClient } from './noodle';
 import { LwClient } from './lwclient';
 import { TcpClientConnection } from './tcpclientconnection';
 import Debug from 'debug';
+import { ClientConnection } from './clientconnection';
+import { WsClientConnection } from './wsclientconnection';
 const debug = Debug('NoodleClient');
 
 interface NoodleClientParameters {
@@ -9,6 +11,16 @@ interface NoodleClientParameters {
   host?: string;
   /** TCP port. Default is 6107 */
   port?: number;
+  /** Connection type */
+  type: 'tcp' | 'ws' | 'wss';
+  /** Should we reject unauthorized certificates. Default is false */
+  rejectUnauthorized?: boolean;
+  /** Username for authentication. No need to specify with connections without authorization */
+  username?: string;
+  /** Password for authentication */
+  password?: string;
+  /** Connection retry timeout in milliseconds. Default is 1000 */
+  connectionRetryTimeout?: number;
   /** Optional name for this client */
   name?: string;
   /** Should we wait the responses, before send a new command. Default is false */
@@ -115,18 +127,44 @@ const NoodleClientProxyHandler: ProxyHandler<NoodleClient> = {
 
 export const noodleClient = (options: NoodleClientParameters | string = 'localhost'): NoodleClient => {
   if (typeof options === 'string') {
-    const opts: NoodleClientParameters = { host: options, port: 6107, waitresponses: false };
+    const opts: NoodleClientParameters = { host: options, port: 6107, waitresponses: false, type: 'tcp', name: 'default' };
     options = opts;
   } else {
     options.host = options.host || 'localhost';
     options.port = options.port || 6107;
     options.waitresponses = options.waitresponses || false;
+    options.type = options.type || 'tcp';
+    options.name = options.name || 'default';
   }
-  const clientObj: NoodleClientObject = new NoodleClientObject(
-    options.name || 'default',
-    [],
-    new LwClient(new TcpClientConnection(options.host, options.port), options.waitresponses),
-  );
+  let client: ClientConnection;
+  if (options.type === 'tcp') {
+    debug('Creating TCP client');
+    client = new TcpClientConnection(options.host, options.port);
+  } else if (options.type === 'ws') {
+    debug('Creating WS client');
+    client = new WsClientConnection({
+      host: options.host,
+      port: options.port,
+      secure: false,
+      connectionRetryTimeout: options.connectionRetryTimeout || 1000,
+      username: options.username,
+      password: options.password,
+    });
+  } else if (options.type === 'wss') {
+    debug('Creating WSS client');
+    client = new WsClientConnection({
+      host: options.host,
+      port: options.port,
+      secure: true,
+      connectionRetryTimeout: options.connectionRetryTimeout || 1000,
+      username: options.username,
+      password: options.password,
+      rejectUnauthorized: options.rejectUnauthorized || false,
+    });
+  } else {
+    throw new Error('Unknown client type: ' + options.type + '. Supported types are: tcp, ws, wss.');
+  }
+  const clientObj: NoodleClientObject = new NoodleClientObject(options.name || 'default', [], new LwClient(client, options.waitresponses));
   debug('Noodle client created');
   return new Proxy(obj2fun(clientObj), NoodleClientProxyHandler) as NoodleClient;
 };

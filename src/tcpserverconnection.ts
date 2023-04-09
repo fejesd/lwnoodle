@@ -13,12 +13,15 @@ interface ServerSocket {
 
 export class TcpServerConnection extends EventEmitter implements ServerConnection {
   server: Server;
-  sockets: { [id: number]: ServerSocket };
-  socketcount: number;
+  sockets: { [id: string]: ServerSocket };
   frameLimiter: string;
+  host: string;
+  port: number;
 
   constructor(port: number, host = 'localhost') {
     super();
+    this.host = host;
+    this.port = port;
     this.server = new Server();
     this.server.on('error', this.serverError.bind(this));
     this.server.on('connection', this.serverConnection.bind(this));
@@ -26,28 +29,30 @@ export class TcpServerConnection extends EventEmitter implements ServerConnectio
     this.server.on('listening', this.serverListen.bind(this));
     this.server.listen({ port, host, exclusive: true });
     this.sockets = {};
-    this.socketcount = 0;
     this.frameLimiter = '\n';
+  }
+
+  public name(): string {
+    return 'Tcp ' + this.host + ':' + this.port;
   }
 
   private serverClose() {
     debug('Server closed');
-    this.emit('serverclose');
+    this.emit('serverclose', this);
   }
 
   private serverListen() {
     debug('Server is listening');
-    this.emit('listening');
+    this.emit('listening', this);
   }
 
   private serverError(e: Error) {
     debug('Server error: ' + e.toString());
-    this.emit('error', e);
+    this.emit('error', this, e);
   }
 
   private serverConnection(s: Socket) {
-    this.socketcount++;
-    const socketId = this.socketcount;
+    const socketId = Math.random().toString(36).substr(2, 5);
     debug(`New socket was received, id: ${socketId}`);
     this.sockets[socketId] = {
       socket: s,
@@ -58,11 +63,11 @@ export class TcpServerConnection extends EventEmitter implements ServerConnectio
     s.on('close', () => {
       debug(`Socket ${socketId} has been closed`);
       delete this.sockets[socketId];
-      this.emit('close', socketId);
+      this.emit('close', this, socketId);
     });
     s.on('error', (e: Error) => {
       debug(`Socket ${socketId} has reported an error: ` + e.toString());
-      this.emit('socketerror', socketId, e);
+      this.emit('socketerror', this, socketId, e);
     });
     s.on('drain', () => {
       this.sockets[socketId].drained = true;
@@ -82,15 +87,15 @@ export class TcpServerConnection extends EventEmitter implements ServerConnectio
       const messages = this.sockets[socketId].inputbuffer.split(this.frameLimiter);
       for (let i = 0; i < messages.length - 1; i++) {
         debug(`< ${messages[i]}`);
-        this.emit('frame', socketId, messages[i].replace('\r', ''));
+        this.emit('frame', this, socketId, messages[i].replace('\r', ''));
       }
       this.sockets[socketId].inputbuffer = messages[messages.length - 1];
       if (this.sockets[socketId].inputbuffer.length > 1e6) {
         this.sockets[socketId].inputbuffer = '';
-        this.emit('socketerror', socketId, new Error(`Socket incoming buffer is full, no delimiter was received since 1MB of data. Data is dropped.`));
+        this.emit('socketerror', this, socketId, new Error(`Socket incoming buffer is full, no delimiter was received since 1MB of data. Data is dropped.`));
       }
     });
-    this.emit('connect', socketId);
+    this.emit('connect', this, socketId);
   }
 
   /**
@@ -99,9 +104,9 @@ export class TcpServerConnection extends EventEmitter implements ServerConnectio
    * @param msg
    * @returns
    */
-  write(socketId: number, msg: string): void {
-    if (socketId === -1) {
-      Object.keys(this.sockets).forEach((key) => this.write(parseInt(key, 10), msg));
+  write(socketId: string, msg: string): void {
+    if (socketId === '') {
+      Object.keys(this.sockets).forEach((key) => this.write(key, msg));
       return;
     }
     if (!(socketId in this.sockets)) {
@@ -114,7 +119,7 @@ export class TcpServerConnection extends EventEmitter implements ServerConnectio
       if (!this.sockets[socketId].drained) debug(`Socket ${socketId} output buffer full`);
     } else {
       if (this.sockets[socketId].outputbuffer.length < 1024) this.sockets[socketId].outputbuffer.push(msg); // message delayed
-      else this.emit('socketerror', socketId, new Error('Outgoing buffer is stalled, message has been dropped'));
+      else this.emit('socketerror', this, socketId, new Error('Outgoing buffer is stalled, message has been dropped'));
     }
   }
 

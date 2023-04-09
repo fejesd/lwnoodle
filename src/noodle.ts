@@ -1,5 +1,6 @@
 import { LwClient } from './lwclient';
 import { LwServer } from './lwserver';
+import { ServerConnection } from './serverconnection';
 
 export type ListenerCallback = (path: string, property: string, value: any) => void;
 
@@ -144,7 +145,7 @@ export type NoodleServer = Noodle & {
   /** parts of the path. It is not intended for external use */
   path: string[];
   /** return an LwServer */
-  server: LwServer;
+  server: ServerConnection[];
   /** Shutdown the server, close listening ports, close all clients */
   __close__(): void;
   /** return all subnodes */

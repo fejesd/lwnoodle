@@ -16,9 +16,9 @@ let receivedMessage: string[] = [];
 
 beforeAll(async () => {
   server = noodleServer({ port: 6107 });
-  await waitForAnEvent(server.server, 'listening', debug);
+  await waitForAnEvent(server.server[0] as any, 'listening', debug);
   client = new TcpClientConnection();
-  await waitForAnEvent(server.server, 'connect', debug);
+  await waitForAnEvent(server.server[0] as any, 'connect', debug);
   if (!client.connected) await waitForAnEvent(client, 'connect', debug);
   client.on('frame', (data) => {
     receivedMessage.push(data);
@@ -27,10 +27,10 @@ beforeAll(async () => {
 
 afterAll(async () => {
   client.close();
-  await waitForAnEvent(server.server, 'close', debug);
+  await waitForAnEvent(server.server[0], 'close', debug);
   server.__close__();
   debug('wait server to close');
-  await waitForAnEvent(server.server, 'serverclose', debug);
+  await waitForAnEvent(server.server[0], 'serverclose', debug);
   debug('server closed');
 });
 

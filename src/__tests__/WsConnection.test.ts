@@ -71,8 +71,8 @@ test('Sending message in both ways', async () => {
   client1.on('frame', (data) => {
     msg.push([0, data]);
   });
-  server.write(1, 'Hello!\nTada');
-  server.write(1, '\nhey');
+  server.write(Object.keys(server.sockets)[0], 'Hello!\nTada');
+  server.write(Object.keys(server.sockets)[0], '\nhey');
   await waitForAnEvent(client1, 'frame', debug, 2);
   expect(msg.length).toBe(2);
   expect(msg[0][1]).toBe('Hello!');

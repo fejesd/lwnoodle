@@ -13,7 +13,7 @@ beforeEach(() => {
   debug('');
 });
 
-test('Single wss connection', async () => {
+test('Single wss connection without identification', async () => {
   console.log(process.cwd());
   const server = new WsServerConnection({
     port: 6107,
@@ -24,6 +24,42 @@ test('Single wss connection', async () => {
   });
   await waitForAnEvent(server, 'listening', debug);
   const client = new WsClientConnection({ host: 'localhost', port: 6107, secure: true, rejectUnauthorized: false });
+  await waitForAnEvent(client, 'connect', debug);
+  expect(client.isConnected()).toBe(true);
+  client.close();
+  await waitForAnEvent(client, 'close', debug);
+  server.close();
+  await waitForAnEvent(server, 'serverclose', debug);
+});
+
+test('Single wss connection with basic authentication', async () => {
+  const server = new WsServerConnection({
+    port: 6107,
+    host: 'localhost',
+    secure: true,
+    key: readFileSync('src/__tests__/certs/key.pem'),
+    cert: readFileSync('src/__tests__/certs/cert.pem'),
+    auth: (username, password) => {
+      return username === 'user' && password === 'pass';
+    },
+  });
+  // test connection without authentication
+  await waitForAnEvent(server, 'listening', debug);
+  var client = new WsClientConnection({ host: 'localhost', port: 6107, secure: true, rejectUnauthorized: false });
+  client.on('error', (err) => {});
+  await waitForAnEvent(client, 'error', debug);
+  expect(client.isConnected()).toBe(false);
+  client.close();
+
+  // test connection with wrong authentication
+  var client = new WsClientConnection({ host: 'localhost', port: 6107, secure: true, rejectUnauthorized: false, username: 'user', password: 'wrong' });
+  client.on('error', (err) => {});
+  await waitForAnEvent(client, 'error', debug);
+  expect(client.isConnected()).toBe(false);
+  client.close();
+
+  // test connection with correct authentication
+  var client = new WsClientConnection({ host: 'localhost', port: 6107, secure: true, rejectUnauthorized: false, username: 'user', password: 'pass' });
   await waitForAnEvent(client, 'connect', debug);
   expect(client.isConnected()).toBe(true);
   client.close();
@@ -91,8 +127,8 @@ test('Sending message in both ways on a wss connection', async () => {
   client1.on('frame', (data) => {
     msg.push([0, data]);
   });
-  server.write(1, 'Hello!\nTada');
-  server.write(1, '\nhey');
+  server.write(Object.keys(server.sockets)[0], 'Hello!\nTada');
+  server.write(Object.keys(server.sockets)[0], '\nhey');
   await waitForAnEvent(client1, 'frame', debug, 2);
   expect(msg.length).toBe(2);
   expect(msg[0][1]).toBe('Hello!');

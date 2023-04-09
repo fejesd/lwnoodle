@@ -56,7 +56,7 @@ test('Sending message in both ways', async () => {
   const server = new TcpServerConnection(6107);
 
   await waitForAnEvent(server, 'listening', debug);
-  server.on('frame', (id, data) => {
+  server.on('frame', (server, id, data) => {
     msg.push([id, data]);
   });
   const client1 = new TcpClientConnection('localhost', 6107);
@@ -71,8 +71,8 @@ test('Sending message in both ways', async () => {
   client1.on('frame', (data) => {
     msg.push([0, data]);
   });
-  server.write(1, 'Hello!\nTada');
-  server.write(1, '\nhey');
+  server.write(Object.keys(server.sockets)[0], 'Hello!\nTada');
+  server.write(Object.keys(server.sockets)[0], '\nhey');
   await waitForAnEvent(client1, 'frame', debug, 2);
   expect(msg.length).toBe(2);
   expect(msg[0][1]).toBe('Hello!');

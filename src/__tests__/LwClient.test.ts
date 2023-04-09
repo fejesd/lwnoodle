@@ -19,7 +19,7 @@ beforeAll(async () => {
   await waitForAnEvent(server, 'listening', debug);
   client = new LwClient(new TcpClientConnection());
   await waitForAnEvent(client, 'connect', debug);
-  server.on('frame', (id, data) => {
+  server.on('frame', (server, id, data) => {
     const parts = data.split('#');
     receivedMessage = parts[1];
     expect(parts[1]).toBe(expectedMessage);
@@ -75,9 +75,9 @@ test('GET should return with the cached properties immediately', async () => {
   });
   expect(receivedMessage).toBe(expectedMessage);
 
-  server.write(-1, 'CHG /TEST/NODE.test1=some\\nvalue\r\n');
-  server.write(-1, 'CHG /TEST/NODE.SignalPresent=true\r\n');
-  server.write(-1, 'CHG /TEST/NODE.SignalPresent2=2\r\n');
+  server.write('', 'CHG /TEST/NODE.test1=some\\nvalue\r\n');
+  server.write('', 'CHG /TEST/NODE.SignalPresent=true\r\n');
+  server.write('', 'CHG /TEST/NODE.SignalPresent2=2\r\n');
   await waitLinesRcv(client.connection, 3);
 
   // test for cache hits
@@ -198,10 +198,10 @@ test('callback is called when CHG was received on an opened node', async () => {
   const id1 = await client.OPEN('/TEST/A', cb1);
   const id2 = await client.OPEN('/TEST/A', cb2);
 
-  server.write(-1, 'CHG /TEST/B.test1=somevalue\r\n');
-  server.write(-1, 'CHG /TEST/A.test2=someothervalue\r\n');
-  server.write(-1, 'CHG /TEST/C.test1=somevalue\r\n');
-  server.write(-1, 'CHG /TEST/A.test3=somethirdvalue\r\n');
+  server.write('', 'CHG /TEST/B.test1=somevalue\r\n');
+  server.write('', 'CHG /TEST/A.test2=someothervalue\r\n');
+  server.write('', 'CHG /TEST/C.test1=somevalue\r\n');
+  server.write('', 'CHG /TEST/A.test3=somethirdvalue\r\n');
   await waitLinesRcv(client.connection, 4);
 
   expect(cb1.mock.calls.length).toBe(2);
@@ -232,9 +232,9 @@ test('callback is called only when CHG was received on an opened node with a spe
   const cb1 = jest.fn();
   const id1 = await client.OPEN('/TEST/A', cb1, 'SignalPresent');
 
-  server.write(-1, 'CHG /TEST/A.test1=somevalue\r\n');
-  server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
-  server.write(-1, 'CHG /TEST/A.SignalPresent2=2\r\n');
+  server.write('', 'CHG /TEST/A.test1=somevalue\r\n');
+  server.write('', 'CHG /TEST/A.SignalPresent=true\r\n');
+  server.write('', 'CHG /TEST/A.SignalPresent2=2\r\n');
   await waitLinesRcv(client.connection, 3);
 
   expect(cb1.mock.calls.length).toBe(1);
@@ -253,10 +253,10 @@ test('callback is called only when CHG was received on an opened node with a spe
   const cb1 = jest.fn();
   const id1 = await client.OPEN('/TEST/A', cb1, 'SignalPresent=true');
 
-  server.write(-1, 'CHG /TEST/A.test1=somevalue\r\n');
-  server.write(-1, 'CHG /TEST/A.SignalPresent=false\r\n');
-  server.write(-1, 'CHG /TEST/A.SignalPresent=true\r\n');
-  server.write(-1, 'CHG /TEST/A.SignalPresent2=2\r\n');
+  server.write('', 'CHG /TEST/A.test1=somevalue\r\n');
+  server.write('', 'CHG /TEST/A.SignalPresent=false\r\n');
+  server.write('', 'CHG /TEST/A.SignalPresent=true\r\n');
+  server.write('', 'CHG /TEST/A.SignalPresent2=2\r\n');
   await waitLinesRcv(client.connection, 4);
 
   expect(cb1.mock.calls.length).toBe(1);

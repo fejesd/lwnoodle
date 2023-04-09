@@ -426,18 +426,27 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
   },
 };
 
-export const noodleServer = (options: number | LwServerOptions = 6107): NoodleServer => {
-  let opts: LwServerOptions = {};
+export const noodleServer = (options: number | LwServerOptions | LwServerOptions[] = 6107): NoodleServer => {
+  let opts: LwServerOptions[] = [];
   if (typeof options === 'number') {
-    opts = {
-      port: options,
-      name: 'default',
-      host: 'localhost',
-    };
+    opts = [
+      {
+        port: options,
+        name: 'default',
+        host: 'localhost',
+      },
+    ];
+  } else if (Array.isArray(options)) {
+    for (const option of options) {
+      option.port = option.port || 6107;
+      option.name = option.name || 'default';
+      option.host = option.host || 'localhost';
+    }
   } else {
-    opts.port = options.port || 6107;
-    opts.name = options.name || 'default';
-    opts.host = options.host || 'localhost';
+    opts[0] = options;
+    opts[0].port = options.port || 6107;
+    opts[0].name = options.name || 'default';
+    opts[0].host = options.host || 'localhost';
   }
 
   const server = new LwServer(opts);

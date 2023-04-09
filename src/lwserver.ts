@@ -1,11 +1,13 @@
 import { NoodleServerObject, NoodleServerProxyHandler } from './server';
 import { TcpServerConnection } from './tcpserverconnection';
+import { ServerConnection } from './serverconnection';
 import { EventEmitter } from 'node:events';
 import Debug from 'debug';
 import * as _ from 'lodash';
 import { LwErrorCodes as LwErrorCodes, LwError as LwError, Noodle, NoodleServer, Property } from './noodle';
 import { escape, unescape } from './escaping';
 import { convertValue } from './common';
+import { WsServerConnection } from './wsserverconnection';
 
 const debug = Debug('LwServer');
 
@@ -13,6 +15,10 @@ export type LwServerOptions = {
   name?: string;
   port?: number;
   host?: string;
+  type?: 'tcp' | 'ws' | 'wss';
+  auth?: (username: string, password: string) => boolean;
+  key?: string;
+  cert?: string;
 };
 
 /**
@@ -21,7 +27,8 @@ export type LwServerOptions = {
 interface LwServerSession {
   opened: { node: Noodle; path: string; subscriptionId: number }[];
   authenticated: boolean;
-  socketId: number;
+  socketId: string;
+  server: ServerConnection;
 }
 
 export interface LwServer {
@@ -38,58 +45,89 @@ export class LwServer extends EventEmitter {
   /** root node */
   root: NoodleServer;
   /** session data */
-  sessions: { [socketId: number]: LwServerSession };
-  server: TcpServerConnection;
-  options: LwServerOptions;
+  sessions: { [socketId: string]: LwServerSession };
+  server: ServerConnection[];
+  // list of server options
+  options: LwServerOptions[];
 
   static getErrorHeader(errorcode: LwErrorCodes): string {
     return '%E' + ('00' + (errorcode as number).toString()).substr(-3) + ':' + LwError.getErrorCodeString(errorcode);
   }
 
-  constructor(options: LwServerOptions) {
+  constructor(options: LwServerOptions | LwServerOptions[]) {
     super();
-    this.sessions = [];
+    this.sessions = {};
+    if (!Array.isArray(options)) options = [options];
     this.options = options;
-    this.server = new TcpServerConnection(this.options.port || 6107, options.host || 'localhost');
-    this.server.on('listening', () => {
-      debug(`Server started`);
-      this.emit('listening');
-    });
-    this.server.on('serverclose', () => {
-      debug(`Server closed`);
-      this.emit('serverclose');
-    });
-    this.server.on('error', (e: Error) => {
-      debug(`Server error: ${e}`);
-      this.emit('error', e);
-    });
-    this.server.on('connect', (socketId: number) => {
-      this.sessions[socketId] = {
-        opened: [],
-        authenticated: false,
-        socketId,
-      };
-      this.emit('connect', socketId);
-      debug(`New connection id:${socketId}`);
-    });
-    this.server.on('close', (socketId: number) => {
-      this.sessions[socketId].opened.forEach((entry) => {
-        entry.node.closeListener(entry.subscriptionId);
+    this.server = [];
+    this.options.forEach((option, idx) => {
+      option.type = option.type || 'tcp';
+      if (option.type === 'tcp') {
+        this.server.push(new TcpServerConnection(option.port || 6107, option.host || 'localhost'));
+      } else if (option.type === 'ws') {
+        this.server.push(
+          new WsServerConnection({
+            port: option.port || 6107,
+            host: option.host || 'localhost',
+            secure: false,
+            auth: option.auth,
+          }),
+        );
+      } else if (option.type === 'wss') {
+        this.server.push(
+          new WsServerConnection({
+            port: option.port || 6107,
+            host: option.host || 'localhost',
+            secure: true,
+            key: option.key,
+            cert: option.cert,
+            auth: option.auth,
+          }),
+        );
+      } else {
+        throw new Error(`Unknown server type ${option.type}`);
+      }
+      this.server[idx].on('listening', (s: ServerConnection) => {
+        debug(`${s.name()} Server started`);
+        this.emit('listening');
       });
-      delete this.sessions[socketId];
-      this.emit('close', socketId);
-      debug(`Closed connection id:${socketId}`);
+      this.server[idx].on('serverclose', (s: ServerConnection) => {
+        debug(`${s.name()} Server closed`);
+        this.emit('serverclose');
+      });
+      this.server[idx].on('error', (s: ServerConnection, e: Error) => {
+        debug(`Server error: ${s.name()} ${e}`);
+        this.emit('error', e);
+      });
+      this.server[idx].on('connect', (s: ServerConnection, socketId: string) => {
+        this.sessions[socketId] = {
+          opened: [],
+          authenticated: false,
+          socketId,
+          server: s,
+        };
+        this.emit('connect', socketId);
+        debug(`New connection id:${socketId}`);
+      });
+      this.server[idx].on('close', (s: ServerConnection, socketId: string) => {
+        this.sessions[socketId].opened.forEach((entry) => {
+          entry.node.closeListener(entry.subscriptionId);
+        });
+        delete this.sessions[socketId];
+        this.emit('close', socketId);
+        debug(`Closed connection server:${s.name()} id:${socketId}`);
+      });
+      this.server[idx].on('socketerror', (s: ServerConnection, socketId: string, e: Error) => {
+        debug(`Socket error: ${s.name()} ${socketId}: ${e}`);
+        this.emit('socketerror', socketId, e);
+      });
+      this.server[idx].on('frame', this.lineRcv.bind(this));
     });
-    this.server.on('socketerror', (socketId: number, e: Error) => {
-      debug(`Socket error: ${socketId}: ${e}`);
-      this.emit('socketerror', socketId, e);
-    });
-    this.server.on('frame', this.lineRcv.bind(this));
 
-    this.root = new Proxy(new NoodleServerObject(options.name || 'default', [], this), NoodleServerProxyHandler) as unknown as NoodleServer;
+    this.root = new Proxy(new NoodleServerObject(options[0].name || 'default', [], this), NoodleServerProxyHandler) as unknown as NoodleServer;
   }
 
-  private async lineRcv(socketId: number, msg: string) {
+  private async lineRcv(server: ServerConnection, socketId: string, msg: string) {
     let response: string = '';
     let signature: boolean;
     debug(msg);
@@ -307,7 +345,7 @@ export class LwServer extends EventEmitter {
             break;
           }
           const subscriptionId: number = await node.on((path: string, property: string, value: any) => {
-            this.server.write(socketId, 'CHG ' + path + '.' + property + '=' + value + '\r\n');
+            server.write(socketId, 'CHG ' + path + '.' + property + '=' + value + '\r\n');
           }, args);
           this.sessions[socketId].opened.push({ node, path: args, subscriptionId });
           response += 'o- ' + args + '\r\n';
@@ -332,12 +370,14 @@ export class LwServer extends EventEmitter {
       }
     } while (false);
     if (signature) response += '}\r\n';
-    this.server.write(socketId, response);
+    server.write(socketId, response);
   }
 
   close() {
-    this.server.close();
-    debug(`Server closed`);
+    this.server.forEach((server) => {
+      debug(`${server.name()} Server closed`);
+      server.close();
+    });
   }
 
   private getNode(s: string): Noodle | undefined {
