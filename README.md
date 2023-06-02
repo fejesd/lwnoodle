@@ -24,7 +24,7 @@ Server side:
 ```javascript
 const lwnoodle = require('lwnoodle');
 
-const server = lwnoodle.noodleServer('192.168.0.1');  
+const server = lwnoodle.noodleServer({host:'127.0.0.1'});  
 
 server.APPLICATION.Name = 'My Application';
 server.LED.setRGB = (r,g,b) => { /* do something with r,g,b values */}
