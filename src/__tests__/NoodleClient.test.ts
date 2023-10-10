@@ -129,8 +129,6 @@ test('property return value as a string if it containst only spaces', async () =
   expect(typeof result).toBe('string');
 });
 
-
-
 test('property return value as a boolean if result is "true"', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
   mockedResponse = 'pw /NODE/TEST.Property=true';

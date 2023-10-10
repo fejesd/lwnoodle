@@ -22,7 +22,7 @@ export function convertValue(value: string) {
     retvalue = value.split(';');
     if (retvalue.slice(-1)[0] === '') retvalue.pop();
     for (let i = 0; i < retvalue.length; i++) retvalue[i] = convertValue(retvalue[i]);
-  } else if ((!isNaN(Number(trimmedvalue)))&&(trimmedvalue.length)) retvalue = Number(trimmedvalue);
+  } else if (!isNaN(Number(trimmedvalue)) && trimmedvalue.length) retvalue = Number(trimmedvalue);
   else if (value.toUpperCase() === 'FALSE') retvalue = false;
   else if (value.toUpperCase() === 'TRUE') retvalue = true;
   else retvalue = value;
