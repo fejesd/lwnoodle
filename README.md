@@ -166,6 +166,16 @@ const mynode = lwnoodle.live(noodle.APPLICATION.STATUS);
 
 console.log(mynode.Time); //Time property will hold the actual value, kept updated automatically
 
+// also you can get anytime a copy of the actual snapshot of the node:
+
+const snapshot = mynode.getSnapshot();
+
+console.log(snapshot.Time); //This is a regular static object, Time will not be updated in the background
+
+```
+
+```
+
 ```
 
 # Server reference

@@ -389,3 +389,33 @@ test('live should return immediately', async () => {
   expect(testnode.Counter).toBe(13);
   expect(testnode.SignalPresent).toBe(true);
 });
+
+test('live getSnapshot() method should return with a json object', async () => {
+  expectedMessage = 'OPEN /PATH/TO/TEST/NODE2';
+  mockedResponse = 'o- /PATH/TO/TEST/NODE2';
+  server.once('frame', (data) => {
+    expectedMessage = 'GET /PATH/TO/TEST/NODE2.*';
+    mockedResponse = 'pr /PATH/TO/TEST/NODE2.Test=ablak\npr /PATH/TO/TEST/NODE2.Hello=hello\\nworld\npr /PATH/TO/TEST/NODE2.Counter=12';
+  });
+
+  const liveobj:any = (await live(noodle.PATH.TO.TEST.NODE2));
+  const snapshot = liveobj.getSnapshot();
+
+  //check snapshot type, should be a serializable json object
+  expect(typeof snapshot).toBe('object');
+  expect(snapshot.Test).toBe('ablak');
+  expect(snapshot.Hello).toBe('hello\nworld');
+  expect(snapshot.Counter).toBe(12);
+  expect(snapshot.Foo).toBe(undefined);
+
+  // send some update
+  server.write('', 'CHG /TEST/A.test1=somevalue\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE2.Counter=13\r\n');
+  server.write('', 'CHG /PATH/TO/TEST/NODE2.SignalPresent=true\r\n');
+  await waitLinesRcv(noodle.lwclient.connection, 3);
+
+  //snapshot should not change
+  expect(snapshot.Counter).toBe(12);
+  expect(snapshot.SignalPresent).toBe(undefined);
+
+});

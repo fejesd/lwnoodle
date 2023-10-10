@@ -178,7 +178,7 @@ interface LiveObject {
 
 const LiveObjProxyHandler: ProxyHandler<LiveObject> = {
   get(target: LiveObject, key: string): any {
-    if (key === 'cache') return target.cache;
+    if (key === 'getSnapshot') return ((data) => { return function() { return data; }})(JSON.parse(JSON.stringify(target.cache)));
     return target.cache[key];
   },
 
