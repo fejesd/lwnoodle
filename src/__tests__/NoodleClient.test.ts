@@ -102,6 +102,35 @@ test('property return value as a number if result is an float', async () => {
   expect(typeof result).toBe('number');
 });
 
+test('property return value as a string if it is not just a number', async () => {
+  expectedMessage = 'GET /NODE/TEST.Property';
+  mockedResponse = 'pw /NODE/TEST.Property=1920x1080';
+
+  const result = await noodle.NODE.TEST.Property;
+  expect(result).toBe('1920x1080');
+  expect(typeof result).toBe('string');
+});
+
+test('property return value as a string if it is empty', async () => {
+  expectedMessage = 'GET /NODE/TEST.Property';
+  mockedResponse = 'pw /NODE/TEST.Property=';
+
+  const result = await noodle.NODE.TEST.Property;
+  expect(result).toBe('');
+  expect(typeof result).toBe('string');
+});
+
+test('property return value as a string if it containst only spaces', async () => {
+  expectedMessage = 'GET /NODE/TEST.Property';
+  mockedResponse = 'pw /NODE/TEST.Property=  ';
+
+  const result = await noodle.NODE.TEST.Property;
+  expect(result).toBe('  ');
+  expect(typeof result).toBe('string');
+});
+
+
+
 test('property return value as a boolean if result is "true"', async () => {
   expectedMessage = 'GET /NODE/TEST.Property';
   mockedResponse = 'pw /NODE/TEST.Property=true';
@@ -398,7 +427,7 @@ test('live getSnapshot() method should return with a json object', async () => {
     mockedResponse = 'pr /PATH/TO/TEST/NODE2.Test=ablak\npr /PATH/TO/TEST/NODE2.Hello=hello\\nworld\npr /PATH/TO/TEST/NODE2.Counter=12';
   });
 
-  const liveobj:any = (await live(noodle.PATH.TO.TEST.NODE2));
+  const liveobj: any = await live(noodle.PATH.TO.TEST.NODE2);
   const snapshot = liveobj.getSnapshot();
 
   //check snapshot type, should be a serializable json object
@@ -417,5 +446,4 @@ test('live getSnapshot() method should return with a json object', async () => {
   //snapshot should not change
   expect(snapshot.Counter).toBe(12);
   expect(snapshot.SignalPresent).toBe(undefined);
-
 });

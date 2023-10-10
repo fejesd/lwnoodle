@@ -17,11 +17,12 @@ export function obj2fun(object: object): () => void {
 /* Helper function, convert common values to appropriate JavaScript types. (integer / boolean / list) */
 export function convertValue(value: string) {
   let retvalue: any;
+  const trimmedvalue = value.trim();
   if (value.indexOf(';') !== -1) {
     retvalue = value.split(';');
     if (retvalue.slice(-1)[0] === '') retvalue.pop();
     for (let i = 0; i < retvalue.length; i++) retvalue[i] = convertValue(retvalue[i]);
-  } else if (!isNaN(parseFloat(value))) retvalue = parseFloat(value);
+  } else if ((!isNaN(Number(trimmedvalue)))&&(trimmedvalue.length)) retvalue = Number(trimmedvalue);
   else if (value.toUpperCase() === 'FALSE') retvalue = false;
   else if (value.toUpperCase() === 'TRUE') retvalue = true;
   else retvalue = value;
