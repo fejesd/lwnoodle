@@ -178,6 +178,7 @@ interface LiveObject {
 
 const LiveObjProxyHandler: ProxyHandler<LiveObject> = {
   get(target: LiveObject, key: string): any {
+    if (key === 'cache') return target.cache;
     return target.cache[key];
   },
 
