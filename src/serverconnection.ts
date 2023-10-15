@@ -7,6 +7,7 @@ export declare interface ServerConnection extends EventEmitter {
   on(event: 'socketerror', listener: (server: ServerConnection, socketId: string, e: Error) => void): this;
   on(event: 'frame', listener: (server: ServerConnection, socketId: string, msg: string) => void): this;
 
+  type(): string;
   name(): string;
   write(socketId: string, msg: string): void;
   close(): void;

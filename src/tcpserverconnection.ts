@@ -36,6 +36,10 @@ export class TcpServerConnection extends EventEmitter implements ServerConnectio
     return 'Tcp ' + this.host + ':' + this.port;
   }
 
+  public type(): string {
+    return 'tcp';
+  }
+
   private serverClose() {
     debug('Server closed');
     this.emit('serverclose', this);

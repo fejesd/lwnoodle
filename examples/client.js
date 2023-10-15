@@ -1,7 +1,7 @@
 const lwnoodle = require('./../lib');
 
 //init server
-var client = lwnoodle.noodleClient({'port':6107, 'host':'127.0.0.1'});
+var client = lwnoodle.noodleClient([{'port':6107, 'host':'127.0.0.1', type:'tcp'}, {'port':6108, 'host':'127.0.0.1', type:'ws'}]);
 
 (async () =>{
 

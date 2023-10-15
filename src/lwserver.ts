@@ -17,8 +17,8 @@ export type LwServerOptions = {
   host?: string;
   type?: 'tcp' | 'ws' | 'wss';
   auth?: (username: string, password: string) => boolean;
-  key?: string;
-  cert?: string;
+  key?: string | Buffer;
+  cert?: string | Buffer;
 };
 
 /**
@@ -70,7 +70,7 @@ export class LwServer extends EventEmitter {
             port: option.port || 6107,
             host: option.host || 'localhost',
             secure: false,
-            auth: option.auth,
+            auth: option.auth
           }),
         );
       } else if (option.type === 'wss') {
@@ -128,6 +128,7 @@ export class LwServer extends EventEmitter {
   }
 
   private async lineRcv(server: ServerConnection, socketId: string, msg: string) {
+    debug(`Received frame from ${server.name()} socket ${socketId}: ${msg}`);
     let response: string = '';
     let signature: boolean;
     debug(msg);

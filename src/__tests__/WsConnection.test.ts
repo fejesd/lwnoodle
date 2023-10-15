@@ -56,7 +56,7 @@ test('Sending message in both ways', async () => {
   const server = new WsServerConnection(6107);
 
   await waitForAnEvent(server, 'listening', debug);
-  server.on('frame', (id, data) => {
+  server.on('frame', (server, id, data) => {
     msg.push([id, data]);
   });
   const client1 = new WsClientConnection('localhost', 6107);

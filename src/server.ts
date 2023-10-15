@@ -434,6 +434,7 @@ export const noodleServer = (options: number | LwServerOptions | LwServerOptions
         port: options,
         name: 'default',
         host: 'localhost',
+        type: 'tcp'
       },
     ];
   } else if (Array.isArray(options)) {
@@ -441,12 +442,19 @@ export const noodleServer = (options: number | LwServerOptions | LwServerOptions
       option.port = option.port || 6107;
       option.name = option.name || 'default';
       option.host = option.host || 'localhost';
+      option.type = option.type || 'tcp';
+      option.cert = option.cert;
+      option.key = option.key;
     }
+    opts = options;
   } else {
     opts[0] = options;
     opts[0].port = options.port || 6107;
     opts[0].name = options.name || 'default';
     opts[0].host = options.host || 'localhost';
+    opts[0].type = options.type || 'tcp';
+    opts[0].cert = options.cert;
+    opts[0].key = options.key;
   }
 
   const server = new LwServer(opts);

@@ -67,7 +67,7 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
       this.server.on('listening', () => this.onListening());
     } else {
       this.httpsserver = createServer({ key: this.key, cert: this.cert });
-      this.httpsserver.on('listening', () => this.onListening());
+      // this.httpsserver.on('listening', () => this.onListening());
       this.server = new WebSocketServer({ noServer: true });
       this.httpsserver.listen(this.port, this.host);
       this.httpsserver.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
@@ -90,7 +90,7 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
           }
         }
         this.server.handleUpgrade(req, socket, head, (ws) => {
-          this.server.emit('connection', ws);
+          this.server.emit('connection', this, ws);
         });
       });
       debug('Secure wsServerConnection created on port ' + this.port);
@@ -105,11 +105,15 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
     return 'ws ' + this.host + ':' + this.port;
   }
 
-  onConnection(ws: WebSocket) {
-    debug('onConnection');
+  public type() {
+    return this.secure?'wss':'ws';
+  }
+
+  onConnection(ws: WebSocket) {    
     const socketId = Math.random().toString(36).substr(2, 5);
+    debug('onConnection socket #' + socketId + ' connected');
     this.sockets[socketId] = { socket: ws, inputbuffer: '' };
-    this.emit('connect', socketId);
+    this.emit('connect', this, socketId);
     ws.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => this.onMessage(socketId, data, isBinary));
     ws.on('error', (e) => {
       debug('Error on socket #' + socketId + ': ' + e.message);
@@ -117,27 +121,27 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
     ws.on('close', () => {
       debug('Close on socket #' + socketId);
       delete this.sockets[socketId];
-      this.emit('close', socketId);
+      this.emit('close', this, socketId);
     });
   }
 
   onError(e: Error) {
     debug('Error: ' + e.message);
-    this.emit('error', e.message);
+    this.emit('error', this, e.message);
   }
 
   onListening() {
     debug('listening');
-    this.emit('listening');
+    this.emit('listening', this);
   }
 
   onClose() {
     debug('close server');
-    this.emit('serverclose');
+    this.emit('serverclose', this);
   }
 
   onMessage(socketId: string, data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) {
-    debug('onMessage');
+    debug('onMessage socket #' + socketId + ' received data');
     if (this.sockets[socketId]) {
       if (isBinary) {
         debug('onMessage error: binary data not supported');
@@ -145,8 +149,11 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
         const msg = data.toString();
         this.sockets[socketId].inputbuffer += msg;
         const frames = this.sockets[socketId].inputbuffer.split('\n');
-        this.sockets[socketId].inputbuffer = frames.pop() || '';
-        frames.forEach((frame) => this.emit('frame', socketId, frame));
+        this.sockets[socketId].inputbuffer = frames.pop() || '';        
+        frames.forEach((frame) => {
+          debug('onMessage socket #' + socketId + ' received frame: ' + frame);
+          this.emit('frame', this, socketId, frame)
+        });
       }
     } else {
       debug('onMessage error: socket not found');
@@ -172,6 +179,7 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
   }
 
   close(): void {
+    debug('Closing server..');
     this.server.close();
     this.httpsserver?.close();
   }
