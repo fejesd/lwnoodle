@@ -51,24 +51,22 @@ test('Simple simple websocket connection', async () => {
   debug('server closed');
 });
 
+test('Secure websocket connection', async () => {
+  const server = noodle.noodleServer({ port: 6107, type: 'wss', key: readFileSync('src/__tests__/certs/key.pem'), cert: readFileSync('src/__tests__/certs/cert.pem') });
+  await waitForAnEvent(server.server[0] as any, 'listening', debug);
+  const client = noodle.noodleClient({ type: 'wss', rejectUnauthorized: false });
+  await waitForAnEvent(server.server[0] as any, 'connect', debug);
+  await client.__connect__();
 
-test('Secure websocket connection', async () => {    
-    const server = noodle.noodleServer({ port: 6107 , type: 'wss', key: readFileSync('src/__tests__/certs/key.pem'), cert: readFileSync('src/__tests__/certs/cert.pem')});
-    await waitForAnEvent(server.server[0] as any, 'listening', debug);
-    const client = noodle.noodleClient({ type: 'wss', rejectUnauthorized: false});
-    await waitForAnEvent(server.server[0] as any, 'connect', debug);
-    await client.__connect__();
+  expect(server.server[0].type()).toBe('wss');
 
-    expect(server.server[0].type()).toBe('wss');
+  server.TEST.NODE.Test = 123 as any;
+  expect(await client.TEST.NODE.Test).toBe(123);
 
-    server.TEST.NODE.Test = 123 as any;
-    expect(await client.TEST.NODE.Test).toBe(123);
-
-    client.__close__();    
-    server.__close__();
-    debug('wait server to close');
-    await waitForAnEvent(server.server[0] as any, 'serverclose', debug);
-    await waitForAnEvent(server.server[0] as any, 'close', debug);
-    debug('server closed');
+  client.__close__();
+  server.__close__();
+  debug('wait server to close');
+  await waitForAnEvent(server.server[0] as any, 'serverclose', debug);
+  await waitForAnEvent(server.server[0] as any, 'close', debug);
+  debug('server closed');
 });
-

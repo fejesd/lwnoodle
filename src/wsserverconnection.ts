@@ -100,7 +100,6 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
     }
     this.server.on('connection', (ws: WebSocket) => this.onConnection(ws));
     this.server.on('error', (e) => this.onError(e));
-    
   }
 
   public name() {
