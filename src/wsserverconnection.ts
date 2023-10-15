@@ -65,6 +65,7 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
       this.server = new WebSocketServer({ port: this.port, host: this.host });
       debug('Unsecure wsServerConnection created on port ' + this.port);
       this.server.on('listening', () => this.onListening());
+      this.server.on('close', () => this.onClose());
     } else {
       this.httpsserver = createServer({ key: this.key, cert: this.cert });
       // this.httpsserver.on('listening', () => this.onListening());
@@ -90,15 +91,16 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
           }
         }
         this.server.handleUpgrade(req, socket, head, (ws) => {
-          this.server.emit('connection', this, ws);
+          this.server.emit('connection', ws);
         });
       });
       debug('Secure wsServerConnection created on port ' + this.port);
       setTimeout(this.onListening.bind(this), 100);
+      this.httpsserver.on('close', () => this.onClose());
     }
     this.server.on('connection', (ws: WebSocket) => this.onConnection(ws));
     this.server.on('error', (e) => this.onError(e));
-    this.server.on('close', () => this.onClose());
+    
   }
 
   public name() {

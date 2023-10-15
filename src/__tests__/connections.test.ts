@@ -51,7 +51,7 @@ test('Simple simple websocket connection', async () => {
   debug('server closed');
 });
 
-/*
+
 test('Secure websocket connection', async () => {    
     const server = noodle.noodleServer({ port: 6107 , type: 'wss', key: readFileSync('src/__tests__/certs/key.pem'), cert: readFileSync('src/__tests__/certs/cert.pem')});
     await waitForAnEvent(server.server[0] as any, 'listening', debug);
@@ -71,4 +71,4 @@ test('Secure websocket connection', async () => {
     await waitForAnEvent(server.server[0] as any, 'close', debug);
     debug('server closed');
 });
-*/
+

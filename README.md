@@ -58,7 +58,7 @@ noodle.APPLICATION.STATUS.on('Time', (path, prop, value)=>{ console.log(value); 
 * A client can listen for arbitrary number of nodes / properties* 
 * All methods / properties can have optionally a description (manual), which can be queried by the clients. 
 * Symbolic links can be created within the tree
-* Supports raw TCP socket connection and WebSocket
+* Supports raw TCP socket connection and WebSocket (incl. secure websockets)
 * Typescript support
 
 ## Protocol
@@ -197,9 +197,12 @@ const server = noodleServer({port: 6107, type:'ws'}); // use websocket instead o
 
 const server = noodleServer([{port: 6107},{port: 6108, type:'ws'}]); // use port 6107 for TCP and 6108 for websocket, use two server backend at same time.
 
-```
+const server = noodleServer({port: 6107, type:'wss', key: key_in_pem_format, cert: cert_in_pem_format}); 
+// use port 6107 for secure websocket, key and cert has to be in PEM format
+// of course, this kind of server can be used with other types, like raw TCP socket clients as well
 
 ```
+
 
 ## Defining nodes, properties, methods
 
