@@ -106,10 +106,10 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
   }
 
   public type() {
-    return this.secure?'wss':'ws';
+    return this.secure ? 'wss' : 'ws';
   }
 
-  onConnection(ws: WebSocket) {    
+  onConnection(ws: WebSocket) {
     const socketId = Math.random().toString(36).substr(2, 5);
     debug('onConnection socket #' + socketId + ' connected');
     this.sockets[socketId] = { socket: ws, inputbuffer: '' };
@@ -149,10 +149,10 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
         const msg = data.toString();
         this.sockets[socketId].inputbuffer += msg;
         const frames = this.sockets[socketId].inputbuffer.split('\n');
-        this.sockets[socketId].inputbuffer = frames.pop() || '';        
+        this.sockets[socketId].inputbuffer = frames.pop() || '';
         frames.forEach((frame) => {
           debug('onMessage socket #' + socketId + ' received frame: ' + frame);
-          this.emit('frame', this, socketId, frame)
+          this.emit('frame', this, socketId, frame);
         });
       }
     } else {

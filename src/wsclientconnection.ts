@@ -81,7 +81,7 @@ export class WsClientConnection extends ClientConnection {
     this.connecting = false;
     this.inputbuffer = '';
     this.emit('connect');
-    debug('WS'+(this.secure?'S':'')+' connection established');
+    debug('WS' + (this.secure ? 'S' : '') + ' connection established');
   }
 
   onMessage(data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) {

@@ -434,7 +434,7 @@ export const noodleServer = (options: number | LwServerOptions | LwServerOptions
         port: options,
         name: 'default',
         host: 'localhost',
-        type: 'tcp'
+        type: 'tcp',
       },
     ];
   } else if (Array.isArray(options)) {

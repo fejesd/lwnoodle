@@ -70,7 +70,7 @@ export class LwServer extends EventEmitter {
             port: option.port || 6107,
             host: option.host || 'localhost',
             secure: false,
-            auth: option.auth
+            auth: option.auth,
           }),
         );
       } else if (option.type === 'wss') {
