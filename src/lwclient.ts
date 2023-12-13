@@ -92,21 +92,21 @@ export class LwClient extends EventEmitter {
   }
 
   private socketConnected() {
-    debug('Connection established succesfully');
-    this.emit('connect');
+    debug('Connection established succesfully');    
     this.signatureCounter = 0;
     this.waitList = [];
     this.isInBlock = false;
     this.block = [];
     this.cmdToSend = [];
     this.cache = {};
-    const subscribed: string[] = [];
+    const subscribed: string[] = [];    
     this.subscribers.forEach((i: any) => {
       if (subscribed.indexOf(i.path) === -1) {
         this.cmdSend('OPEN ' + i.path);
         subscribed.push(i.path);
       }
     });
+    setImmediate(()=>this.emit('connect'));
   }
 
   private cmdSend(cmd: string, callback?: (data: string[], info: any) => void, callbackInfo?: any, timeoutcb?: () => void): void {
@@ -226,7 +226,7 @@ export class LwClient extends EventEmitter {
     for (let i = 0; i < this.waitList.length; i++)
       if (this.waitList[i].signature === signature) {
         const waitRecord: WaitListItem = this.waitList[i];
-        debug('Removed :' + this.waitList.splice(i, 1)[0].signature);
+        debug('Removed :' + signature);
         if (this.waitResponses) {
           if (this.cmdToSend.length > 0) {
             const dataToSend: string = this.cmdToSend.shift() as string;
