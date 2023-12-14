@@ -92,21 +92,21 @@ export class LwClient extends EventEmitter {
   }
 
   private socketConnected() {
-    debug('Connection established succesfully');    
+    debug('Connection established succesfully');
     this.signatureCounter = 0;
     this.waitList = [];
     this.isInBlock = false;
     this.block = [];
     this.cmdToSend = [];
     this.cache = {};
-    const subscribed: string[] = [];    
+    const subscribed: string[] = [];
     this.subscribers.forEach((i: any) => {
       if (subscribed.indexOf(i.path) === -1) {
         this.cmdSend('OPEN ' + i.path);
         subscribed.push(i.path);
       }
     });
-    setImmediate(()=>this.emit('connect'));
+    setImmediate(() => this.emit('connect'));
   }
 
   private cmdSend(cmd: string, callback?: (data: string[], info: any) => void, callbackInfo?: any, timeoutcb?: () => void): void {

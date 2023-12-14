@@ -270,8 +270,9 @@ test('callback is called only when CHG was received on an opened node with a spe
   await client.CLOSE(id1);
 });
 
-
 test('get multiple properties at same time', async () => {
+  expectedMessage = '';
+  client.signatureCounter = 0;
   var v1 = client.GET('/TEST/NODE.property1');
   var v2 = client.GET('/TEST/NODE.property2');
   var v3 = client.GET('/TEST/NODE.property3');
@@ -282,10 +283,8 @@ test('get multiple properties at same time', async () => {
   server.write('', '{0002\r\npr /TEST/NODE.property3=3\r\n}\r\n');
   debug('wait for lines');
   await waitLinesRcv(client.connection, 9);
-  
-  await Promise.all([v1, v2, v3]).then(values => {
+
+  await Promise.all([v1, v2, v3]).then((values) => {
     expect(values).toStrictEqual([1, 2, 3]);
   });
 });
-
-
