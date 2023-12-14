@@ -34,7 +34,7 @@ export function sleep(ms: number) {
 export function waitLinesRcv(c: ClientConnection, cnt: number): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     let n = 0;
-    const handler = () => {
+    const handler = (d:any) => {
       n++;
       if (n === cnt) {
         c.removeListener('frame', handler);
