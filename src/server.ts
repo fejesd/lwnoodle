@@ -218,7 +218,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
     const keyparts = key.split('__');
     const mainkey = keyparts[0];
     let keymodifier = keyparts.length > 2 ? keyparts[1] : '';
-    if (mainkey in t.nodes) return new Proxy(t.nodes[key] as unknown as NoodleServerObject, NoodleServerProxyHandler);
+    if (mainkey in t.nodes) return new Proxy(t.nodes[mainkey] as unknown as NoodleServerObject, NoodleServerProxyHandler);
     if (keymodifier === 'man' || keymodifier === 'rw') keymodifier = '';
     const isManual = keyparts[keyparts.length - 2] === 'man';
     const isRw = keyparts[keyparts.length - 2] === 'rw';
