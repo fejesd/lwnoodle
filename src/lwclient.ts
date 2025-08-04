@@ -1,7 +1,7 @@
 import { ClientConnection } from './clientconnection';
 import { EventEmitter } from 'node:events';
 import { escape, unescape } from './escaping';
-import { convertValue } from './common';
+import { convertValue, PropValue } from './common';
 import Debug from 'debug';
 import * as _ from 'lodash';
 import { ListenerCallback } from './noodle';
@@ -310,7 +310,7 @@ export class LwClient extends EventEmitter {
    * @param property Full path + dot + propertyname
    * @returns
    */
-  GET(property: string): Promise<any> {
+  GET(property: string): Promise<PropValue> {
     const pathParts = property.split('.');
     return new Promise((resolve, reject) => {
       if (pathParts.length !== 2) return this.error(`Getting invalid property: ${property}`, reject);
@@ -339,12 +339,12 @@ export class LwClient extends EventEmitter {
           if (line.charAt(0) !== 'p') return this.error('GET response contains no property... ' + line, reject);
           const n = line.indexOf('=');
           if (n === -1) return this.error('Malformed GET response: ' + line, reject);
-          const value = convertValue(unescape(line.substring(n + 1, line.length)));
+          const value = unescape(line.substring(n + 1, line.length));
           // if this node is cached, store the property into the cache
           const nodeCache = this.cache[pathPartsCb[0]];
           if (nodeCache) nodeCache[pathPartsCb[1]] = value;
           // resolve
-          resolve(value);
+          resolve(convertValue(value));
         },
         pathParts,
         () => this.error('no answer, timeout', reject),
@@ -366,11 +366,11 @@ export class LwClient extends EventEmitter {
               const n = dline.indexOf('=');
               const p = dline.indexOf('.');
               if (n === -1) return this.error('Malformed GET response: ' + dline, reject);
-              const value = convertValue(unescape(dline.substring(n + 1, dline.length)));
+              const value = unescape(dline.substring(n + 1, dline.length));
               const nodeCache = this.cache[pathCb];
               const property = dline.substring(p + 1, n);
               if (nodeCache) nodeCache[property] = value;
-              callback(pathCb, property, value);
+              callback(pathCb, property, convertValue(value));
               debug(JSON.stringify(this.cache));
             }
           });

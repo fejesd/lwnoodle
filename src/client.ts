@@ -4,6 +4,7 @@ import { TcpClientConnection } from './tcpclientconnection';
 import Debug from 'debug';
 import { ClientConnection } from './clientconnection';
 import { WsClientConnection } from './wsclientconnection';
+import { PropValue } from './common';
 const debug = Debug('NoodleClient');
 
 interface NoodleClientParameters {
@@ -62,16 +63,16 @@ const NoodleClientProxyHandler: ProxyHandler<NoodleClient> = {
     const path = '/' + target.path.slice(0, -1).join('/');
     switch (last) {
       case 'on':
-        if (typeof args[0] === 'function') return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), '*');
-        else return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[1](cbpath, cbproperty, cbvalue), args[0]);
+        if (typeof args[0] === 'function') return target.lwclient.OPEN(path, (cbpath, cbproperty, cbvalue) => args[0](cbpath, cbproperty, cbvalue), '*');
+        else return target.lwclient.OPEN(path, (cbpath, cbproperty, cbvalue) => args[1](cbpath, cbproperty, cbvalue), args[0]);
       case 'once':
-        if (typeof args[0] === 'function') return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[0](cbpath, cbproperty, cbvalue), '*', 1);
-        else return target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => args[1](cbpath, cbproperty, cbvalue), args[0], 1);
+        if (typeof args[0] === 'function') return target.lwclient.OPEN(path, (cbpath, cbproperty, cbvalue) => args[0](cbpath, cbproperty, cbvalue), '*', 1);
+        else return target.lwclient.OPEN(path, (cbpath, cbproperty, cbvalue) => args[1](cbpath, cbproperty, cbvalue), args[0], 1);
       case 'removeListener':
         return target.lwclient.CLOSE(args[0]);
       case 'waitFor':
-        return new Promise<string>((resolve, reject) => {
-          target.lwclient.OPEN(path, (cbpath: string, cbproperty: string, cbvalue: string) => resolve(cbvalue), args[0], 1);
+        return new Promise<PropValue>((resolve, reject) => {
+          target.lwclient.OPEN(path, (cbpath, cbproperty, cbvalue) => resolve(cbvalue), args[0], 1);
         });
       default:
         return target.lwclient.CALL(path + ':' + last, args.join(','));
@@ -173,7 +174,7 @@ interface LiveObject {
   (): any;
   node: Noodle;
   subscriptionId: number;
-  cache: { [path: string]: string };
+  cache: { [path: string]: PropValue };
 }
 
 const LiveObjProxyHandler: ProxyHandler<LiveObject> = {
@@ -204,8 +205,8 @@ export const live = async (node: NoodleClient) => {
       subscriptionId: 0,
     },
   );
-  const updater = ((obj: LiveObject): ((path: string, property: string, value: string) => void) => {
-    return (path: string, property: string, value: string): void => {
+  const updater = ((obj: LiveObject): ((path: string, property: string, value: PropValue) => void) => {
+    return (path: string, property: string, value: PropValue): void => {
       obj.cache[property] = value;
     };
   })(liveObj);

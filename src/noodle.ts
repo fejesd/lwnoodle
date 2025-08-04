@@ -1,8 +1,9 @@
+import { PropValue } from './common';
 import { LwClient } from './lwclient';
 import { LwServer } from './lwserver';
 import { ServerConnection } from './serverconnection';
 
-export type ListenerCallback = (path: string, property: string, value: any) => void;
+export type ListenerCallback = (path: string, property: string, value: PropValue) => void;
 
 export type Noodle = {
   [method: string]: (...args: any[]) => string;
