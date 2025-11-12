@@ -105,12 +105,12 @@ test('get - all property and methods', async () => {
   server.PATH.TO.MY.NODE.TESTB.Aa = 'hello\nworld';
   server.PATH.TO.MY.NODE.TESTB.Ab = 2;
   server.PATH.TO.MY.NODE.TESTB.Ac = { rw: false, value: true };
-  server.PATH.TO.MY.NODE.TESTB.m1 = (() => {
+  server.PATH.TO.MY.NODE.TESTB.m1 = () => {
     /* */
-  });
-  server.PATH.TO.MY.NODE.TESTB.m2 = (() => {
+  };
+  server.PATH.TO.MY.NODE.TESTB.m2 = () => {
     /* */
-  });
+  };
 
   client.write('GET /PATH/TO/MY/NODE/TESTB.*\n');
   await waitForAnEvent(client, 'frame', debug, 5);
@@ -156,12 +156,12 @@ test('getall - subnodes, properties and methods combined', async () => {
   server.PATH.TO.MY.NODE.SUB2.PropB = 2;
   server.PATH.TO.MY.NODE.Prop1 = 'hello';
   server.PATH.TO.MY.NODE.Prop2 = { rw: false, value: true };
-  server.PATH.TO.MY.NODE.add = ((a: number, b: number) => {
+  server.PATH.TO.MY.NODE.add = (a: number, b: number) => {
     return a + b;
-  });
-  server.PATH.TO.MY.NODE.sub = ((a: number, b: number) => {
+  };
+  server.PATH.TO.MY.NODE.sub = (a: number, b: number) => {
     return a - b;
-  });
+  };
 
   client.write('0009#GETALL /PATH/TO/MY/NODE\n');
   // Expect: signature start, two subnodes, two properties, two methods, signature end (order: subnodes sorted, properties sorted, methods sorted)
@@ -309,9 +309,9 @@ test('set a property - syntax error 2', async () => {
 //
 
 test('call a method - number parameters', async () => {
-  server.PATH.TO.MY.NODE.subtract = ((a: number, b: number) => {
+  server.PATH.TO.MY.NODE.subtract = (a: number, b: number) => {
     return a - b;
-  });
+  };
 
   client.write('CALL /PATH/TO/MY/NODE:subtract(10,2)\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -319,9 +319,9 @@ test('call a method - number parameters', async () => {
 });
 
 test('call a method - Lw error', async () => {
-  server.PATH.TO.MY.NODE.subtract = ((a: number, b: number) => {
+  server.PATH.TO.MY.NODE.subtract = (a: number, b: number) => {
     throw new LwError(LwErrorCodes.LwErrorCodes_InvalidValue);
-  });
+  };
 
   client.write('CALL /PATH/TO/MY/NODE:subtract(10,2)\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -329,9 +329,9 @@ test('call a method - Lw error', async () => {
 });
 
 test('call a method - generic error', async () => {
-  server.PATH.TO.MY.NODE.subtract = ((a: number, b: number) => {
+  server.PATH.TO.MY.NODE.subtract = (a: number, b: number) => {
     throw new Error('something terrible has happened');
-  });
+  };
 
   client.write('CALL /PATH/TO/MY/NODE:subtract(10,2)\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -339,9 +339,9 @@ test('call a method - generic error', async () => {
 });
 
 test('call a method - escaping', async () => {
-  server.PATH.TO.MY.NODE.concat = ((a: string, b: string) => {
+  server.PATH.TO.MY.NODE.concat = (a: string, b: string) => {
     return (a + b).replace('\n', '\t').replace('\n', ' ');
-  });
+  };
 
   client.write('CALL /PATH/TO/MY/NODE:concat(Hello\\nWorld!,Hello\\nthere!)\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -353,9 +353,9 @@ test('call a method - escaping', async () => {
 //
 
 test('getting a methods manual', async () => {
-  server.PATH.TO.MY.NODE.concat = ((a: number) => {
+  server.PATH.TO.MY.NODE.concat = (a: number) => {
     return a;
-  });
+  };
   server.PATH.TO.MY.NODE.concat__man__ = 'returns with the parameter';
 
   client.write('MAN /PATH/TO/MY/NODE:concat\n');
@@ -389,13 +389,13 @@ test('getting all props and methods manual from a node', async () => {
   server.PATH.MY.NODE.Prop__man__ = 'some description1';
   server.PATH.MY.NODE.Spec = true;
   server.PATH.MY.NODE.Spec__man__ = 'some description2';
-  server.PATH.MY.NODE.add = (() => {
+  server.PATH.MY.NODE.add = () => {
     /* */
-  });
+  };
   server.PATH.MY.NODE.add__man__ = 'some description3';
-  server.PATH.MY.NODE.subt = (() => {
+  server.PATH.MY.NODE.subt = () => {
     /* */
-  });
+  };
   server.PATH.MY.NODE.subt__man__ = 'some description4';
 
   client.write('MAN /PATH/MY/NODE.*\n');

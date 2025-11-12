@@ -329,7 +329,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       } else if (typeof value === 'function') {
         if (isManual || isRw) return false;
         // update with a function type, adapt signature
-  t.methods[mainkey].fun = ((...args: any[]) => (value as (...a: any[]) => any).apply(t.methods[mainkey], args)) as (args: any[]) => string;
+        t.methods[mainkey].fun = ((...args: any[]) => (value as (...a: any[]) => any).apply(t.methods[mainkey], args)) as (args: any[]) => string;
       } else {
         if (isManual) t.methods[mainkey].manual = value.toString();
         else return false;
@@ -362,7 +362,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
         if (isManual) return false;
         // update with a function type
         debug(`Create a new method from function ${mainkey}`);
-  t.methods[mainkey].fun = ((...args: any[]) => (value as (...a: any[]) => any).apply(t.methods[mainkey], args)) as (args: any[]) => string;
+        t.methods[mainkey].fun = ((...args: any[]) => (value as (...a: any[]) => any).apply(t.methods[mainkey], args)) as (args: any[]) => string;
       } else {
         if (isManual) {
           t.methods[mainkey].manual = value.toString();
