@@ -147,6 +147,47 @@ test('get - non existing property', async () => {
 });
 
 //
+// GETALL
+//
+
+test('getall - subnodes, properties and methods combined', async () => {
+  server.PATH.TO.MY.NODE.SUB1.PropA = 1 as any;
+  server.PATH.TO.MY.NODE.SUB2.PropB = 2 as any;
+  server.PATH.TO.MY.NODE.Prop1 = 'hello' as any;
+  server.PATH.TO.MY.NODE.Prop2 = { rw: false, value: true } as any;
+  server.PATH.TO.MY.NODE.add = ((a: number, b: number) => { return a + b; }) as any;
+  server.PATH.TO.MY.NODE.sub = ((a: number, b: number) => { return a - b; }) as any;
+
+  client.write('0009#GETALL /PATH/TO/MY/NODE\n');
+  // Expect: signature start, two subnodes, two properties, two methods, signature end (order: subnodes sorted, properties sorted, methods sorted)
+  // We may have additional pre-existing subnodes/properties from earlier tests; verify at least expected lines exist.
+  await waitForAnEvent(client, 'frame', debug, 8);
+  const expectedSubset = [
+    '{0009',
+    'n- /PATH/TO/MY/NODE/SUB1',
+    'n- /PATH/TO/MY/NODE/SUB2',
+    'pw /PATH/TO/MY/NODE.Prop1=hello',
+    'pr /PATH/TO/MY/NODE.Prop2=true',
+    'm- /PATH/TO/MY/NODE:add',
+    'm- /PATH/TO/MY/NODE:sub',
+    '}'
+  ];
+  expectedSubset.forEach(line => expect(receivedMessage).toContain(line));
+});
+
+test('getall - non existing node', async () => {
+  client.write('GETALL /PATH/TO/MY/NODE_NOTEXISTS\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E GETALL /PATH/TO/MY/NODE_NOTEXISTS %E002:Not exists']);
+});
+
+test('getall - syntax error', async () => {
+  client.write('GETALL PATH/TO/MY/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E GETALL PATH/TO/MY/NODE %E001:Syntax error']);
+});
+
+//
 // SET
 //
 

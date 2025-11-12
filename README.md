@@ -69,6 +69,23 @@ More about LW3 Protocol: https://lightware.com/pub/media/lightware/filedownloade
 
 *DISCLAIMER: This project is not officially supported by Lightware. There are no guarantee that it will work in your production environment*
 
+### Extended commands
+
+In addition to standard LW3 GET variants, the server supports an aggregated command:
+
+```
+GETALL /PATH/TO/NODE
+```
+
+This returns in a single response block the combined output of:
+
+```
+GET /PATH/TO/NODE        (lists subnodes as n- lines)
+GET /PATH/TO/NODE.*      (lists properties and methods)
+```
+
+If the node doesn't exist, a single error line is returned. This is useful to reduce round-trips when a client needs the full snapshot of a node hierarchy and its members. Client side helper may be added in the future; currently you can issue the raw command over the connection.
+
 # Client reference
 
 noodleClient will create a client connection:
