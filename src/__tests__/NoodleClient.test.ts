@@ -218,10 +218,9 @@ test('method call should raise a catchable exception when error has returned', a
     await noodle.PATH.TO.TEST.NODE.test(true, false);
   } catch (e) {
     foo = 1;
-  }  
+  }
   expect(foo).toBe(1);
 });
-
 
 test('method call should raise an exception when junk returned', async () => {
   expectedMessage = 'CALL /PATH/TO/TEST/NODE:test(true,false)';

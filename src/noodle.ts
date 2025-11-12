@@ -5,10 +5,13 @@ import { ServerConnection } from './serverconnection';
 
 export type ListenerCallback = (path: string, property: string, value: PropValue) => void;
 
+// A dynamic node in the noodle tree. We intentionally expose a single loose
+// index signature so TypeScript allows assigning primitives, config objects
+// and functions without needing explicit casts to 'any'.
+// Formerly two conflicting index signatures (method & property) forced users
+// to cast when setting values. That has been replaced by a unified signature.
 export type Noodle = {
-  [method: string]: (...args: any[]) => string;
-} & {
-  [property: string]: string;
+  [key: string]: any;
 } & {
   /**
    * Getting notification when an event happens.
@@ -53,7 +56,7 @@ export type Noodle = {
 
 export type NoodleClient = Noodle & {
   (): any;
-  [name: string]: NoodleClient;
+  [name: string]: NoodleClient; // recursive nodes
 } & {
   /** Return with a promise which will fullfilled when the connection has been created. It is fullfilled immediately if
    * the connection is already opened. As the client attempts reconnect continously on error, the promise will never

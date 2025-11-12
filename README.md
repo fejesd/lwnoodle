@@ -325,17 +325,17 @@ noodle.MANAGEMENT.Settings__node__.Enabled=true;    //cast to node
 
 Type definition is included in the package, so you will have nice code completion with your IDE. 
 
-Because of the tricks involved about ORM and ES6 Proxies, when using tpyescript a casting to any is needed while setting a property:
+Because of the dynamic ORM with ES6 Proxies a wide index signature is exposed. You can now assign values directly without casting:
 
-```typescript app.ts
-
-noodle.PATH.TO.MY.NODE.PropertyName = 'something';    // will raise a compilation-time error
-
-//They will work as expected:
-
-noodle.PATH.TO.MY.NODE.PropertyName = 'something' as any;  
-noodle.PATH.TO.MY.NODE.PropertyName = 42 as any;
-noodle.PATH.TO.MY.NODE.PropertyName = true as any;
-
+```typescript
+noodle.PATH.TO.MY.NODE.PropertyName = 'something';
+noodle.PATH.TO.MY.NODE.PropertyName = 42;
+noodle.PATH.TO.MY.NODE.PropertyName = true;
+noodle.PATH.TO.MY.NODE.PropertyName = { value: 'hello', rw: false };
+noodle.PATH.TO.MY.NODE.myMethod = (a: number, b: number) => a + b;
 ```
+
+Accepted property value types: string | number | boolean | { value?: string|number|boolean; manual?: string; rw?: boolean; setter?: (v:string)=>number; getter?:()=>string }
+
+No explicit `as any` cast is required anymore.
 

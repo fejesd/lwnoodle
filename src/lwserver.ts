@@ -222,7 +222,7 @@ export class LwServer extends EventEmitter {
         // list properties and methods
         const props = node.__properties__();
         const methods = node.__methods__();
-        const nodename = (args === '' ? '/' : args); // keep original path form
+        const nodename = args === '' ? '/' : args; // keep original path form
         Object.keys(props)
           .sort()
           .forEach((propname) => {

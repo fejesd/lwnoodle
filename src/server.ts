@@ -270,7 +270,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
     }
   },
 
-  set(t: NoodleServerObject, key: string, value: string | object): boolean {
+  set(t: NoodleServerObject, key: string, value: string | number | boolean | object | ((...args: any[]) => any)): boolean {
     let $ = false;
     if (key[0] === '$') {
       $ = true;
@@ -284,7 +284,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
     if (keymodifier === 'man' || keymodifier === 'rw') keymodifier = '';
     if (mainkey in t.properties && (keymodifier === '' || keymodifier === 'prop')) {
       // update an existing property value
-      if (typeof value === 'object') {
+      if (typeof value === 'object' && value !== null && typeof value !== 'function') {
         if (isRw || isManual) return false;
         // update to a new Property object
         if ('manual' in value) t.properties[mainkey].manual = value['manual' as keyof object];
@@ -304,7 +304,8 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
         else if (isRw) t.properties[mainkey].rw = value ? true : false;
         else if (t.properties[mainkey].setter) {
           const oldvalue = t.properties[mainkey].value;
-          t.properties[mainkey].setter?.bind(t.properties[mainkey])(value);
+          // setter contract expects a string
+          t.properties[mainkey].setter?.bind(t.properties[mainkey])(value.toString());
           if (oldvalue !== t.properties[mainkey].value) t.handleCallbacks(mainkey, t.properties[mainkey].value);
         } else {
           const newValue = value.toString();
@@ -316,19 +317,19 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       }
       return true;
     } else if (mainkey in t.nodes && (keymodifier === '' || keymodifier === 'node')) {
-      if (typeof value !== 'object') return false;
+      if (typeof value !== 'object' || value === null || typeof value === 'function') return false;
       (t.nodes[mainkey] as unknown as NoodleServerObject).fromJSON(value);
       return true;
     } else if (mainkey in t.methods && (keymodifier === '' || keymodifier === 'method')) {
-      if (typeof value === 'object') {
+      if (typeof value === 'object' && value !== null && typeof value !== 'function') {
         if (isManual || isRw) return false;
         // update to a new Method object
         if ('manual' in value) t.methods[mainkey].manual = value['manual' as keyof object]; // todo: type checks?
         if ('fun' in value) t.methods[mainkey].fun = value['fun' as keyof object];
       } else if (typeof value === 'function') {
         if (isManual || isRw) return false;
-        // update with a function type
-        t.methods[mainkey].fun = value;
+        // update with a function type, adapt signature
+  t.methods[mainkey].fun = ((...args: any[]) => (value as (...a: any[]) => any).apply(t.methods[mainkey], args)) as (args: any[]) => string;
       } else {
         if (isManual) t.methods[mainkey].manual = value.toString();
         else return false;
@@ -351,7 +352,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
       // method
       if (isRw) return false;
       t.methods[mainkey] = { manual: '' };
-      if (typeof value === 'object') {
+      if (typeof value === 'object' && value !== null && typeof value !== 'function') {
         if (isManual) return false;
         // update to a new Method object
         debug(`Create a new method from object ${mainkey}`);
@@ -361,7 +362,7 @@ export const NoodleServerProxyHandler: ProxyHandler<NoodleServerObject> = {
         if (isManual) return false;
         // update with a function type
         debug(`Create a new method from function ${mainkey}`);
-        t.methods[mainkey].fun = value;
+  t.methods[mainkey].fun = ((...args: any[]) => (value as (...a: any[]) => any).apply(t.methods[mainkey], args)) as (args: any[]) => string;
       } else {
         if (isManual) {
           t.methods[mainkey].manual = value.toString();
