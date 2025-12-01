@@ -202,28 +202,28 @@ export class LwServer extends EventEmitter {
               break;
             }
             if (propName === '*') {
-            // getting all property and methods
-            const props = node.__properties__();
-            const methods = node.__methods__();
-            const nodename = args.substring(0, dotPosition);
-            Object.keys(props)
-              .sort()
-              .forEach((propname) => {
-                response += 'p' + (props[propname].rw ? 'w' : 'r') + ' ' + nodename + '.' + propname + '=' + escape(props[propname].value) + '\r\n';
+              // getting all property and methods
+              const props = node.__properties__();
+              const methods = node.__methods__();
+              const nodename = args.substring(0, dotPosition);
+              Object.keys(props)
+                .sort()
+                .forEach((propname) => {
+                  response += 'p' + (props[propname].rw ? 'w' : 'r') + ' ' + nodename + '.' + propname + '=' + escape(props[propname].value) + '\r\n';
+                });
+              methods.forEach((name) => {
+                response += 'm-' + ' ' + nodename + ':' + name + '\r\n';
               });
-            methods.forEach((name) => {
-              response += 'm-' + ' ' + nodename + ':' + name + '\r\n';
-            });
-          } else {
-            // getting single property
-            const prop = node.__properties__(propName);
-            if (prop === undefined) {
-              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
-              break;
+            } else {
+              // getting single property
+              const prop = node.__properties__(propName);
+              if (prop === undefined) {
+                response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
+                break;
+              }
+              response += 'p' + (prop.rw ? 'w' : 'r') + ' ' + args + '=' + escape(prop.value) + '\r\n';
             }
-            response += 'p' + (prop.rw ? 'w' : 'r') + ' ' + args + '=' + escape(prop.value) + '\r\n';
           }
-        }
         }
       } else if (command === 'SET') {
         /**
@@ -355,28 +355,28 @@ export class LwServer extends EventEmitter {
             }
             const propName = args.substring(dotPosition + 1);
             if (propName === '*') {
-            // getting all property and methods
-            const props = node.__properties__();
-            const methods = node.__methods__();
-            const nodename = args.substring(0, dotPosition);
-            Object.keys(props)
-              .sort()
-              .forEach((propname) => {
-                response += 'pm ' + nodename + '.' + propname + ' ' + props[propname].manual + '\r\n';
+              // getting all property and methods
+              const props = node.__properties__();
+              const methods = node.__methods__();
+              const nodename = args.substring(0, dotPosition);
+              Object.keys(props)
+                .sort()
+                .forEach((propname) => {
+                  response += 'pm ' + nodename + '.' + propname + ' ' + props[propname].manual + '\r\n';
+                });
+              methods.forEach((name) => {
+                response += 'mm' + ' ' + nodename + ':' + name + ' ' + node[name + '__method__man__'] + '\r\n';
               });
-            methods.forEach((name) => {
-              response += 'mm' + ' ' + nodename + ':' + name + ' ' + node[name + '__method__man__'] + '\r\n';
-            });
-          } else {
-            // getting single property
-            const prop = node.__properties__(propName);
-            if (prop === undefined) {
-              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
-              break;
+            } else {
+              // getting single property
+              const prop = node.__properties__(propName);
+              if (prop === undefined) {
+                response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
+                break;
+              }
+              response += 'pm ' + args + ' ' + escape(prop.manual) + '\r\n';
             }
-            response += 'pm ' + args + ' ' + escape(prop.manual) + '\r\n';
           }
-        }
         }
       } else if (command === 'OPEN') {
         /* OPEN command has two variant:
