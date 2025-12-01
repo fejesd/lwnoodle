@@ -225,6 +225,41 @@ export class LwServer extends EventEmitter {
             }
           }
         }
+      } else if (command === 'GETALL') {
+        /**
+         * GETALL /SOME/PATH
+         * Combines:
+         *   GET /SOME/PATH        (subnodes)
+         *   GET /SOME/PATH.*      (all props and methods)
+         * Returns a single signature block if requested.
+         */
+        if (args[0] !== '/') {
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
+          break;
+        }
+        const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
+        if (!node) {
+          response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
+          break;
+        }
+        // list subnodes
+        const subnodes: string[] = node.__nodes__();
+        if (args === '/') args = '';
+        subnodes.forEach((element) => {
+          response += 'n- ' + (args ? args : '/') + (args && args !== '' ? '/' : '') + element + '\r\n';
+        });
+        // list properties and methods
+        const props = node.__properties__();
+        const methods = node.__methods__();
+        const nodename = args === '' ? '/' : args; // keep original path form
+        Object.keys(props)
+          .sort()
+          .forEach((propname) => {
+            response += 'p' + (props[propname].rw ? 'w' : 'r') + ' ' + nodename + (nodename === '/' ? '' : '') + '.' + propname + '=' + escape(props[propname].value) + '\r\n';
+          });
+        methods.forEach((name) => {
+          response += 'm- ' + nodename + ':' + name + '\r\n';
+        });
       } else if (command === 'SET') {
         /**
          * SET command syntax:  SET /NODE/PATH.Property=value

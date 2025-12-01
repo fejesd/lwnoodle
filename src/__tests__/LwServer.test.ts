@@ -1,3 +1,4 @@
+import { beforeAll, afterAll, beforeEach, test, expect } from '@jest/globals';
 import { LwServer } from '../lwserver';
 import { TcpClientConnection } from '../tcpclientconnection';
 import Debug from 'debug';
@@ -27,10 +28,10 @@ beforeAll(async () => {
 
 afterAll(async () => {
   client.close();
-  await waitForAnEvent(server.server[0], 'close', debug);
+  await waitForAnEvent(server.server[0] as any, 'close', debug);
   server.__close__();
   debug('wait server to close');
-  await waitForAnEvent(server.server[0], 'serverclose', debug);
+  await waitForAnEvent(server.server[0] as any, 'serverclose', debug);
   debug('server closed');
 });
 
@@ -62,10 +63,10 @@ test('syntax error response', async () => {
 //
 
 test('get - subnodes', async () => {
-  server.PATH.TO.MY.NODE.TESTB.Ab = 2 as any;
-  server.PATH.TO.MY.NODE.TESTA.Ab = 1 as any;
-  server.PATH.TO.MY.NODE.TESTC.Ab = 3 as any;
-  server.PATH.TO.MY.NODE.TESTD.Ab = 4 as any;
+  server.PATH.TO.MY.NODE.TESTB.Ab = 2;
+  server.PATH.TO.MY.NODE.TESTA.Ab = 1;
+  server.PATH.TO.MY.NODE.TESTC.Ab = 3;
+  server.PATH.TO.MY.NODE.TESTD.Ab = 4;
 
   client.write('0001#GET /PATH/TO/MY/NODE\n');
   await waitForAnEvent(client, 'frame', debug, 6);
@@ -73,7 +74,7 @@ test('get - subnodes', async () => {
 });
 
 test('get - subnodes (empty)', async () => {
-  server.PATH.TO.YOUR.NODE.Ab = 2 as any;
+  server.PATH.TO.YOUR.NODE.Ab = 2;
 
   client.write('0001#GET /PATH/TO/YOUR/NODE\n');
   await waitForAnEvent(client, 'frame', debug, 2);
@@ -81,19 +82,19 @@ test('get - subnodes (empty)', async () => {
 });
 
 test('get - a single property', async () => {
-  server.PATH.TO.MY.NODE.TESTB.Aa = 'hello\nworld' as any;
+  server.PATH.TO.MY.NODE.TESTB.Aa = 'hello\nworld';
   receivedMessage = [];
   client.write('0001#GET /PATH/TO/MY/NODE/TESTB.Aa\n');
   await waitForAnEvent(client, 'frame', debug, 3);
   expect(receivedMessage).toStrictEqual(['{0001', 'pw /PATH/TO/MY/NODE/TESTB.Aa=hello\\nworld', '}']);
 
-  server.PATH.TO.MY.NODE.TESTB.Ab = 2 as any;
+  server.PATH.TO.MY.NODE.TESTB.Ab = 2;
   receivedMessage = [];
   client.write('0002#GET /PATH/TO/MY/NODE/TESTB.Ab\n');
   await waitForAnEvent(client, 'frame', debug, 3);
   expect(receivedMessage).toStrictEqual(['{0002', 'pw /PATH/TO/MY/NODE/TESTB.Ab=2', '}']);
 
-  server.PATH.TO.MY.NODE.TESTB.Ac = { rw: false, value: true } as any;
+  server.PATH.TO.MY.NODE.TESTB.Ac = { rw: false, value: true };
   receivedMessage = [];
   client.write('GET /PATH/TO/MY/NODE/TESTB.Ac\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -101,15 +102,15 @@ test('get - a single property', async () => {
 });
 
 test('get - all property and methods', async () => {
-  server.PATH.TO.MY.NODE.TESTB.Aa = 'hello\nworld' as any;
-  server.PATH.TO.MY.NODE.TESTB.Ab = 2 as any;
-  server.PATH.TO.MY.NODE.TESTB.Ac = { rw: false, value: true } as any;
-  server.PATH.TO.MY.NODE.TESTB.m1 = (() => {
+  server.PATH.TO.MY.NODE.TESTB.Aa = 'hello\nworld';
+  server.PATH.TO.MY.NODE.TESTB.Ab = 2;
+  server.PATH.TO.MY.NODE.TESTB.Ac = { rw: false, value: true };
+  server.PATH.TO.MY.NODE.TESTB.m1 = () => {
     /* */
-  }) as any;
-  server.PATH.TO.MY.NODE.TESTB.m2 = (() => {
+  };
+  server.PATH.TO.MY.NODE.TESTB.m2 = () => {
     /* */
-  }) as any;
+  };
 
   client.write('GET /PATH/TO/MY/NODE/TESTB.*\n');
   await waitForAnEvent(client, 'frame', debug, 5);
@@ -143,7 +144,7 @@ test('get - all properties and methods of all subnodes', async () => {
 });
 
 test('get - syntax error', async () => {
-  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld';
 
   client.write('GET NODETestProperty\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -151,7 +152,7 @@ test('get - syntax error', async () => {
 });
 
 test('get - non existing node', async () => {
-  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld';
 
   client.write('GET /PATH/TO/YOUR/NODE.TestProperty\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -159,7 +160,7 @@ test('get - non existing node', async () => {
 });
 
 test('get - non existing property', async () => {
-  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld';
 
   client.write('GET /PATH/TO/MY/NODE.Property\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -167,11 +168,56 @@ test('get - non existing property', async () => {
 });
 
 //
+// GETALL
+//
+
+test('getall - subnodes, properties and methods combined', async () => {
+  server.PATH.TO.MY.NODE.SUB1.PropA = 1;
+  server.PATH.TO.MY.NODE.SUB2.PropB = 2;
+  server.PATH.TO.MY.NODE.Prop1 = 'hello';
+  server.PATH.TO.MY.NODE.Prop2 = { rw: false, value: true };
+  server.PATH.TO.MY.NODE.add = (a: number, b: number) => {
+    return a + b;
+  };
+  server.PATH.TO.MY.NODE.sub = (a: number, b: number) => {
+    return a - b;
+  };
+
+  client.write('0009#GETALL /PATH/TO/MY/NODE\n');
+  // Expect: signature start, two subnodes, two properties, two methods, signature end (order: subnodes sorted, properties sorted, methods sorted)
+  // We may have additional pre-existing subnodes/properties from earlier tests; verify at least expected lines exist.
+  await waitForAnEvent(client, 'frame', debug, 8);
+  const expectedSubset = [
+    '{0009',
+    'n- /PATH/TO/MY/NODE/SUB1',
+    'n- /PATH/TO/MY/NODE/SUB2',
+    'pw /PATH/TO/MY/NODE.Prop1=hello',
+    'pr /PATH/TO/MY/NODE.Prop2=true',
+    'm- /PATH/TO/MY/NODE:add',
+    'm- /PATH/TO/MY/NODE:sub',
+    '}',
+  ];
+  expectedSubset.forEach((line) => expect(receivedMessage).toContain(line));
+});
+
+test('getall - non existing node', async () => {
+  client.write('GETALL /PATH/TO/MY/NODE_NOTEXISTS\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E GETALL /PATH/TO/MY/NODE_NOTEXISTS %E002:Not exists']);
+});
+
+test('getall - syntax error', async () => {
+  client.write('GETALL PATH/TO/MY/NODE\n');
+  await waitForAnEvent(client, 'frame', debug, 1);
+  expect(receivedMessage).toStrictEqual(['-E GETALL PATH/TO/MY/NODE %E001:Syntax error']);
+});
+
+//
 // SET
 //
 
 test('set a property - string', async () => {
-  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld';
   expect(server.PATH.TO.MY.NODE.TestProperty).toBe('hello\nworld');
 
   client.write('SET /PATH/TO/MY/NODE.TestProperty=sample\\nvalue\n');
@@ -182,7 +228,7 @@ test('set a property - string', async () => {
 });
 
 test('set a property - booelan', async () => {
-  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld';
   expect(server.PATH.TO.MY.NODE.TestProperty).toBe('hello\nworld');
 
   client.write('SET /PATH/TO/MY/NODE.TestProperty=true\n');
@@ -200,7 +246,7 @@ test('set a property - booelan', async () => {
 });
 
 test('set a property - number', async () => {
-  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld';
   expect(server.PATH.TO.MY.NODE.TestProperty).toBe('hello\nworld');
 
   client.write('SET /PATH/TO/MY/NODE.TestProperty=42\n');
@@ -216,7 +262,7 @@ test('set a property - using setter function', async () => {
     setter(s: string) {
       this.value = s.toUpperCase();
     },
-  } as any;
+  };
 
   expect(server.PATH.TO.MY.NODE.TestProperty).toBe('hello\nworld');
 
@@ -233,7 +279,7 @@ test('set a property - non-existent node', async () => {
     setter(s: string) {
       this.value = s.toUpperCase();
     },
-  } as any;
+  };
 
   client.write('SET /PATH/TO/YOUR/NODE.TestProperty=sample\\nvalue\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -246,7 +292,7 @@ test('set a property - non-existent property', async () => {
     setter(s: string) {
       this.value = s.toUpperCase();
     },
-  } as any;
+  };
 
   client.write('SET /PATH/TO/MY/NODE.Property=sample\\nvalue\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -254,8 +300,8 @@ test('set a property - non-existent property', async () => {
 });
 
 test('set a property - read only property', async () => {
-  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
-  server.PATH.TO.MY.NODE.TestProperty__rw__ = false as any;
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld';
+  server.PATH.TO.MY.NODE.TestProperty__rw__ = false;
 
   client.write('SET /PATH/TO/MY/NODE.TestProperty=sample\\nvalue\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -263,7 +309,7 @@ test('set a property - read only property', async () => {
 });
 
 test('set a property - syntax error 1', async () => {
-  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld';
 
   client.write('SET /PATH/TO/MY/NODETestProperty=sample\\nvalue\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -271,7 +317,7 @@ test('set a property - syntax error 1', async () => {
 });
 
 test('set a property - syntax error 2', async () => {
-  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
+  server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld';
 
   client.write('SET NODETestProperty\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -283,9 +329,9 @@ test('set a property - syntax error 2', async () => {
 //
 
 test('call a method - number parameters', async () => {
-  server.PATH.TO.MY.NODE.subtract = ((a: number, b: number) => {
+  server.PATH.TO.MY.NODE.subtract = (a: number, b: number) => {
     return a - b;
-  }) as any;
+  };
 
   client.write('CALL /PATH/TO/MY/NODE:subtract(10,2)\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -293,9 +339,9 @@ test('call a method - number parameters', async () => {
 });
 
 test('call a method - Lw error', async () => {
-  server.PATH.TO.MY.NODE.subtract = ((a: number, b: number) => {
+  server.PATH.TO.MY.NODE.subtract = (a: number, b: number) => {
     throw new LwError(LwErrorCodes.LwErrorCodes_InvalidValue);
-  }) as any;
+  };
 
   client.write('CALL /PATH/TO/MY/NODE:subtract(10,2)\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -303,9 +349,9 @@ test('call a method - Lw error', async () => {
 });
 
 test('call a method - generic error', async () => {
-  server.PATH.TO.MY.NODE.subtract = ((a: number, b: number) => {
+  server.PATH.TO.MY.NODE.subtract = (a: number, b: number) => {
     throw new Error('something terrible has happened');
-  }) as any;
+  };
 
   client.write('CALL /PATH/TO/MY/NODE:subtract(10,2)\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -313,9 +359,9 @@ test('call a method - generic error', async () => {
 });
 
 test('call a method - escaping', async () => {
-  server.PATH.TO.MY.NODE.concat = ((a: string, b: string) => {
+  server.PATH.TO.MY.NODE.concat = (a: string, b: string) => {
     return (a + b).replace('\n', '\t').replace('\n', ' ');
-  }) as any;
+  };
 
   client.write('CALL /PATH/TO/MY/NODE:concat(Hello\\nWorld!,Hello\\nthere!)\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -327,10 +373,10 @@ test('call a method - escaping', async () => {
 //
 
 test('getting a methods manual', async () => {
-  server.PATH.TO.MY.NODE.concat = ((a: number) => {
+  server.PATH.TO.MY.NODE.concat = (a: number) => {
     return a;
-  }) as any;
-  server.PATH.TO.MY.NODE.concat__man__ = 'returns with the parameter' as any;
+  };
+  server.PATH.TO.MY.NODE.concat__man__ = 'returns with the parameter';
 
   client.write('MAN /PATH/TO/MY/NODE:concat\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -344,8 +390,8 @@ test('getting a non-existent node method manual', async () => {
 });
 
 test('getting a property manual', async () => {
-  server.PATH.TO.MY.NODE.Prop = 42 as any;
-  server.PATH.TO.MY.NODE.Prop__man__ = 'some description' as any;
+  server.PATH.TO.MY.NODE.Prop = 42;
+  server.PATH.TO.MY.NODE.Prop__man__ = 'some description';
 
   client.write('MAN /PATH/TO/MY/NODE.Prop\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -359,18 +405,18 @@ test('getting a non-existent node property manual', async () => {
 });
 
 test('getting all props and methods manual from a node', async () => {
-  server.PATH.MY.NODE.Prop = 42 as any;
-  server.PATH.MY.NODE.Prop__man__ = 'some description1' as any;
-  server.PATH.MY.NODE.Spec = true as any;
-  server.PATH.MY.NODE.Spec__man__ = 'some description2' as any;
-  server.PATH.MY.NODE.add = (() => {
+  server.PATH.MY.NODE.Prop = 42;
+  server.PATH.MY.NODE.Prop__man__ = 'some description1';
+  server.PATH.MY.NODE.Spec = true;
+  server.PATH.MY.NODE.Spec__man__ = 'some description2';
+  server.PATH.MY.NODE.add = () => {
     /* */
-  }) as any;
-  server.PATH.MY.NODE.add__man__ = 'some description3' as any;
-  server.PATH.MY.NODE.subt = (() => {
+  };
+  server.PATH.MY.NODE.add__man__ = 'some description3';
+  server.PATH.MY.NODE.subt = () => {
     /* */
-  }) as any;
-  server.PATH.MY.NODE.subt__man__ = 'some description4' as any;
+  };
+  server.PATH.MY.NODE.subt__man__ = 'some description4';
 
   client.write('MAN /PATH/MY/NODE.*\n');
   await waitForAnEvent(client, 'frame', debug, 4);
@@ -409,8 +455,8 @@ test('getting all props and methods manual from all subnodes', async () => {
 //
 
 test('open/close a node multiple times', async () => {
-  server.PATH.TO.MY.NODE.Ab = 1 as any;
-  server.PATH.TO.YOUR.NODE.Ab = 1 as any;
+  server.PATH.TO.MY.NODE.Ab = 1;
+  server.PATH.TO.YOUR.NODE.Ab = 1;
 
   client.write('OPEN /PATH/TO/MY/NODE\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -433,8 +479,8 @@ test('open/close a node multiple times', async () => {
 });
 
 test('list opened nodes', async () => {
-  server.PATH.TO.MY.NODE.Ab = 1 as any;
-  server.PATH.TO.YOUR.NODE.Ab = 1 as any;
+  server.PATH.TO.MY.NODE.Ab = 1;
+  server.PATH.TO.YOUR.NODE.Ab = 1;
 
   client.write('OPEN /PATH/TO/MY/NODE\n');
   await waitForAnEvent(client, 'frame', debug, 1);
@@ -474,27 +520,27 @@ test('open non-existing node', async () => {
 });
 
 test('CHG messages should send to the opened node upon changes', async () => {
-  server.PATH.TO.THIRD.NODE.Ab = 1 as any;
-  server.PATH.TO.YOUR.NODE.Ab = 1 as any;
+  server.PATH.TO.THIRD.NODE.Ab = 1;
+  server.PATH.TO.YOUR.NODE.Ab = 1;
 
   client.write('OPEN /PATH/TO/THIRD/NODE\n');
   await waitForAnEvent(client, 'frame', debug, 1);
   expect(receivedMessage).toStrictEqual(['o- /PATH/TO/THIRD/NODE']);
 
   receivedMessage = [];
-  server.PATH.TO.THIRD.NODE.Ab = 1 as any;
-  server.PATH.TO.YOUR.NODE.Ab = 2 as any;
-  server.PATH.TO.THIRD.NODE.Ab = 2 as any;
+  server.PATH.TO.THIRD.NODE.Ab = 1;
+  server.PATH.TO.YOUR.NODE.Ab = 2;
+  server.PATH.TO.THIRD.NODE.Ab = 2;
   await waitForAnEvent(client, 'frame', debug, 1);
   expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/THIRD/NODE.Ab=2']);
 
   receivedMessage = [];
-  server.PATH.TO.THIRD.NODE.Ab = { value: 'test' } as any;
+  server.PATH.TO.THIRD.NODE.Ab = { value: 'test' };
   await waitForAnEvent(client, 'frame', debug, 1);
   expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/THIRD/NODE.Ab=test']);
 
   receivedMessage = [];
-  server.PATH.TO.THIRD.NODE.NewProp = 'hello' as any;
+  server.PATH.TO.THIRD.NODE.NewProp = 'hello';
   await waitForAnEvent(client, 'frame', debug, 1);
   expect(receivedMessage).toStrictEqual(['CHG /PATH/TO/THIRD/NODE.NewProp=hello']);
 
@@ -504,6 +550,6 @@ test('CHG messages should send to the opened node upon changes', async () => {
   expect(receivedMessage).toStrictEqual(['c- /PATH/TO/THIRD/NODE']);
 
   receivedMessage = [];
-  server.PATH.TO.THIRD.NODE.NewProp = 'bye' as any;
+  server.PATH.TO.THIRD.NODE.NewProp = 'bye';
   expect(waitForAnEvent(client, 'frame', debug, 1)).rejects.toEqual('timeout');
 });

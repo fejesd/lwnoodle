@@ -69,6 +69,23 @@ More about LW3 Protocol: https://lightware.com/pub/media/lightware/filedownloade
 
 *DISCLAIMER: This project is not officially supported by Lightware. There are no guarantee that it will work in your production environment*
 
+### Extended commands
+
+In addition to standard LW3 GET variants, the server supports an aggregated command:
+
+```
+GETALL /PATH/TO/NODE
+```
+
+This returns in a single response block the combined output of:
+
+```
+GET /PATH/TO/NODE        (lists subnodes as n- lines)
+GET /PATH/TO/NODE.*      (lists properties and methods)
+```
+
+If the node doesn't exist, a single error line is returned. This is useful to reduce round-trips when a client needs the full snapshot of a node hierarchy and its members. Client side helper may be added in the future; currently you can issue the raw command over the connection.
+
 # Client reference
 
 noodleClient will create a client connection:
@@ -308,17 +325,17 @@ noodle.MANAGEMENT.Settings__node__.Enabled=true;    //cast to node
 
 Type definition is included in the package, so you will have nice code completion with your IDE. 
 
-Because of the tricks involved about ORM and ES6 Proxies, when using tpyescript a casting to any is needed while setting a property:
+Because of the dynamic ORM with ES6 Proxies a wide index signature is exposed. You can now assign values directly without casting:
 
-```typescript app.ts
-
-noodle.PATH.TO.MY.NODE.PropertyName = 'something';    // will raise a compilation-time error
-
-//They will work as expected:
-
-noodle.PATH.TO.MY.NODE.PropertyName = 'something' as any;  
-noodle.PATH.TO.MY.NODE.PropertyName = 42 as any;
-noodle.PATH.TO.MY.NODE.PropertyName = true as any;
-
+```typescript
+noodle.PATH.TO.MY.NODE.PropertyName = 'something';
+noodle.PATH.TO.MY.NODE.PropertyName = 42;
+noodle.PATH.TO.MY.NODE.PropertyName = true;
+noodle.PATH.TO.MY.NODE.PropertyName = { value: 'hello', rw: false };
+noodle.PATH.TO.MY.NODE.myMethod = (a: number, b: number) => a + b;
 ```
+
+Accepted property value types: string | number | boolean | { value?: string|number|boolean; manual?: string; rw?: boolean; setter?: (v:string)=>number; getter?:()=>string }
+
+No explicit `as any` cast is required anymore.
 

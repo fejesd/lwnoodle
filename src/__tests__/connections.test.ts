@@ -1,7 +1,9 @@
+import { beforeEach, test, expect } from '@jest/globals';
 import * as noodle from '../index';
 import Debug from 'debug';
 import { sleep, waitForAnEvent, waitLinesRcv } from './helpers';
 import { obj2fun } from '../common';
+import { EventEmitter } from 'events';
 import { readFileSync } from 'fs';
 const debug = Debug('Test');
 
@@ -20,7 +22,7 @@ test('Simple TCP connection', async () => {
 
   expect(server.server[0].type()).toBe('tcp');
 
-  server.TEST.NODE.Test = 123 as any;
+  server.TEST.NODE.Test = 123;
   expect(await client.TEST.NODE.Test).toBe(123);
 
   client.__close__();
@@ -40,7 +42,7 @@ test('Simple simple websocket connection', async () => {
 
   expect(server.server[0].type()).toBe('ws');
 
-  server.TEST.NODE.Test = 123 as any;
+  server.TEST.NODE.Test = 123;
   expect(await client.TEST.NODE.Test).toBe(123);
 
   client.__close__();
@@ -60,7 +62,7 @@ test('Secure websocket connection', async () => {
 
   expect(server.server[0].type()).toBe('wss');
 
-  server.TEST.NODE.Test = 123 as any;
+  server.TEST.NODE.Test = 123;
   expect(await client.TEST.NODE.Test).toBe(123);
 
   client.__close__();
