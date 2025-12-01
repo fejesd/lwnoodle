@@ -147,33 +147,61 @@ export class LwServer extends EventEmitter {
     do {
       if (command === 'GET') {
         /**
-         *  GET command has three variant:
+         *  GET command has four variant:
          *  GET /SOME/PATH   - get subnodes
          *  GET /SOME/PATH.* - get all props and methods
          *  GET /SOME/PATH.Prop - get a single prop
+         *  GET /SOME/PATH/*.* - get all props and methods of all subnodes
          */
         if (args[0] !== '/') {
           response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
           break;
         }
-        const dotPosition = args.indexOf('.');
-        if (dotPosition === -1) {
-          // GET /SOME/PATH   - get subnodes
-          const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
-          if (!node) response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
-          const subnodes: string[] = node?.__nodes__();
-          if (args === '/') args = '';
-          subnodes?.forEach((element) => {
-            response += 'n- ' + args + '/' + element + '\r\n';
-          });
-        } else {
-          const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
-          const propName = args.substring(dotPosition + 1);
+        // Check for /*.* pattern first
+        if (args.endsWith('/*.*')) {
+          // GET /SOME/PATH/*.* - get all properties and methods of all subnodes
+          const parentPath = args.substring(0, args.length - 4); // remove /*.*
+          const node: NoodleServer | undefined = this.getNode(parentPath) as NoodleServer;
           if (!node) {
             response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
             break;
           }
-          if (propName === '*') {
+          const subnodes: string[] = node.__nodes__();
+          subnodes.forEach((subnodeName) => {
+            const subnodePath = parentPath + (parentPath === '/' ? '' : '/') + subnodeName;
+            const subnode = this.getNode(subnodePath) as NoodleServer;
+            if (subnode) {
+              const props = subnode.__properties__();
+              const methods = subnode.__methods__();
+              Object.keys(props)
+                .sort()
+                .forEach((propname) => {
+                  response += 'p' + (props[propname].rw ? 'w' : 'r') + ' ' + subnodePath + '.' + propname + '=' + escape(props[propname].value) + '\r\n';
+                });
+              methods.forEach((name) => {
+                response += 'm-' + ' ' + subnodePath + ':' + name + '\r\n';
+              });
+            }
+          });
+        } else {
+          const dotPosition = args.indexOf('.');
+          if (dotPosition === -1) {
+            // GET /SOME/PATH   - get subnodes
+            const node: NoodleServer | undefined = this.getNode(args) as NoodleServer;
+            if (!node) response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
+            const subnodes: string[] = node?.__nodes__();
+            if (args === '/') args = '';
+            subnodes?.forEach((element) => {
+              response += 'n- ' + args + '/' + element + '\r\n';
+            });
+          } else {
+            const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
+            const propName = args.substring(dotPosition + 1);
+            if (!node) {
+              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
+              break;
+            }
+            if (propName === '*') {
             // getting all property and methods
             const props = node.__properties__();
             const methods = node.__methods__();
@@ -195,6 +223,7 @@ export class LwServer extends EventEmitter {
             }
             response += 'p' + (prop.rw ? 'w' : 'r') + ' ' + args + '=' + escape(prop.value) + '\r\n';
           }
+        }
         }
       } else if (command === 'SET') {
         /**
@@ -264,40 +293,68 @@ export class LwServer extends EventEmitter {
         }
       } else if (command === 'MAN') {
         /**
-         *  MAN command has three variant:
+         *  MAN command has four variant:
          *  MAN /SOME/PATH.* - get manual of all props and methods
          *  MAN /SOME/PATH.Prop - get a manual single prop
          *  MAN /SOME/PATH:method - get a manual single method
+         *  MAN /SOME/PATH/*.* - get manual of all props and methods of all subnodes
          */
 
         if (args[0] !== '/') {
           response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
           break;
         }
-        const dotPosition = args.indexOf('.');
-        if (dotPosition === -1) {
-          const semicolonPosition = args.indexOf(':');
-          if (semicolonPosition === -1) {
-            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
-            break;
-          }
-          // MAN /SOME/PATH:method - get a manual single method
-          const node: NoodleServer | undefined = this.getNode(args.substring(0, semicolonPosition)) as NoodleServer;
+        // Check for /*.* pattern first
+        if (args.endsWith('/*.*')) {
+          // MAN /SOME/PATH/*.* - get manual of all properties and methods of all subnodes
+          const parentPath = args.substring(0, args.length - 4); // remove /*.*
+          const node: NoodleServer | undefined = this.getNode(parentPath) as NoodleServer;
           if (!node) {
             response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
             break;
           }
-          const methodName = args.substring(semicolonPosition + 1);
-          // todo: non-existent method
-          response += 'mm ' + args + ' ' + node[methodName + '__method__man__'] + '\r\n';
+          const subnodes: string[] = node.__nodes__();
+          subnodes.forEach((subnodeName) => {
+            const subnodePath = parentPath + (parentPath === '/' ? '' : '/') + subnodeName;
+            const subnode = this.getNode(subnodePath) as NoodleServer;
+            if (subnode) {
+              const props = subnode.__properties__();
+              const methods = subnode.__methods__();
+              Object.keys(props)
+                .sort()
+                .forEach((propname) => {
+                  response += 'pm ' + subnodePath + '.' + propname + ' ' + props[propname].manual + '\r\n';
+                });
+              methods.forEach((name) => {
+                response += 'mm' + ' ' + subnodePath + ':' + name + ' ' + subnode[name + '__method__man__'] + '\r\n';
+              });
+            }
+          });
         } else {
-          const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
-          if (!node) {
-            response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
-            break;
-          }
-          const propName = args.substring(dotPosition + 1);
-          if (propName === '*') {
+          const dotPosition = args.indexOf('.');
+          if (dotPosition === -1) {
+            const semicolonPosition = args.indexOf(':');
+            if (semicolonPosition === -1) {
+              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_Syntax) + '\r\n';
+              break;
+            }
+            // MAN /SOME/PATH:method - get a manual single method
+            const node: NoodleServer | undefined = this.getNode(args.substring(0, semicolonPosition)) as NoodleServer;
+            if (!node) {
+              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
+              break;
+            }
+            const methodName = args.substring(semicolonPosition + 1);
+            // todo: non-existent method
+            response += 'mm ' + args + ' ' + node[methodName + '__method__man__'] + '\r\n';
+          } else {
+            const node: NoodleServer | undefined = this.getNode(args.substring(0, dotPosition)) as NoodleServer;
+            if (!node) {
+              response += '-E ' + msg + ' ' + LwServer.getErrorHeader(LwErrorCodes.LwErrorCodes_NotFound) + '\r\n';
+              break;
+            }
+            const propName = args.substring(dotPosition + 1);
+            if (propName === '*') {
             // getting all property and methods
             const props = node.__properties__();
             const methods = node.__methods__();
@@ -319,6 +376,7 @@ export class LwServer extends EventEmitter {
             }
             response += 'pm ' + args + ' ' + escape(prop.manual) + '\r\n';
           }
+        }
         }
       } else if (command === 'OPEN') {
         /* OPEN command has two variant:

@@ -122,6 +122,26 @@ test('get - all property and methods', async () => {
   ]);
 });
 
+test('get - all properties and methods of all subnodes', async () => {
+  server.PATH.TO.NODE.A.Prop = 'test' as any;
+  server.PATH.TO.NODE.B.Prop1 = 'test' as any;
+  server.PATH.TO.NODE.B.Prop2 = { rw: false, value: 'test' } as any;
+  server.PATH.TO.NODE.A.call = (() => {
+    /* */
+  }) as any;
+
+  client.write('0001#GET /PATH/TO/NODE/*.*\n');
+  await waitForAnEvent(client, 'frame', debug, 6);
+  expect(receivedMessage).toStrictEqual([
+    '{0001',
+    'pw /PATH/TO/NODE/A.Prop=test',
+    'm- /PATH/TO/NODE/A:call',
+    'pw /PATH/TO/NODE/B.Prop1=test',
+    'pr /PATH/TO/NODE/B.Prop2=test',
+    '}',
+  ]);
+});
+
 test('get - syntax error', async () => {
   server.PATH.TO.MY.NODE.TestProperty = 'hello\nworld' as any;
 
@@ -359,6 +379,28 @@ test('getting all props and methods manual from a node', async () => {
     'pm /PATH/MY/NODE.Spec some description2',
     'mm /PATH/MY/NODE:add some description3',
     'mm /PATH/MY/NODE:subt some description4',
+  ]);
+});
+
+test('getting all props and methods manual from all subnodes', async () => {
+  server.MAN.TEST.A.Prop = 42 as any;
+  server.MAN.TEST.A.Prop__man__ = 'description A' as any;
+  server.MAN.TEST.B.Spec1 = true as any;
+  server.MAN.TEST.B.Spec1__man__ = 'description B1' as any;
+  server.MAN.TEST.B.Spec2 = 'value' as any;
+  server.MAN.TEST.B.Spec2__man__ = 'description B2' as any;
+  server.MAN.TEST.A.method1 = (() => {
+    /* */
+  }) as any;
+  server.MAN.TEST.A.method1__man__ = 'method description A' as any;
+
+  client.write('MAN /MAN/TEST/*.*\n');
+  await waitForAnEvent(client, 'frame', debug, 4);
+  expect(receivedMessage).toStrictEqual([
+    'pm /MAN/TEST/A.Prop description A',
+    'mm /MAN/TEST/A:method1 method description A',
+    'pm /MAN/TEST/B.Spec1 description B1',
+    'pm /MAN/TEST/B.Spec2 description B2',
   ]);
 });
 
