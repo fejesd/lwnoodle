@@ -153,7 +153,7 @@ export class WsServerConnection extends EventEmitter implements ServerConnection
         this.sockets[socketId].inputbuffer = frames.pop() || '';
         frames.forEach((frame) => {
           debug('onMessage socket #' + socketId + ' received frame: ' + frame);
-          this.emit('frame', this, socketId, frame);
+          this.emit('frame', this, socketId, frame.replace(/\r/g, ''));
         });
       }
     } else {

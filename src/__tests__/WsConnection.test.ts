@@ -81,3 +81,32 @@ test('Sending message in both ways', async () => {
   server.close();
   await waitForAnEvent(server, 'serverclose', debug);
 });
+
+test('CRLF terminated frames are stripped in both ways', async () => {
+  let msg: any[][] = [];
+  const server = new WsServerConnection(6107);
+
+  await waitForAnEvent(server, 'listening', debug);
+  server.on('frame', (server, id, data) => {
+    msg.push([id, data]);
+  });
+  const client1 = new WsClientConnection('localhost', 6107);
+  await waitForAnEvent(client1, 'connect', debug);
+  client1.write('GET /\r\nGET /MEDIA\r\n');
+  await waitForAnEvent(server, 'frame', debug, 2);
+  expect(msg.length).toBe(2);
+  expect(msg[0][1]).toBe('GET /');
+  expect(msg[1][1]).toBe('GET /MEDIA');
+  msg = [];
+  client1.on('frame', (data) => {
+    msg.push([0, data]);
+  });
+  server.write(Object.keys(server.sockets)[0], '{0001\r\npw /.ProductName=Noodle\r\n');
+  await waitForAnEvent(client1, 'frame', debug, 2);
+  expect(msg.length).toBe(2);
+  expect(msg[0][1]).toBe('{0001');
+  expect(msg[1][1]).toBe('pw /.ProductName=Noodle');
+  client1.close();
+  server.close();
+  await waitForAnEvent(server, 'serverclose', debug);
+});

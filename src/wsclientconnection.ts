@@ -94,7 +94,7 @@ export class WsClientConnection extends ClientConnection {
     while (pos >= 0) {
       const msg = this.inputbuffer.substring(0, pos);
       this.inputbuffer = this.inputbuffer.substring(pos + this.frameLimiter.length);
-      this.emit('frame', msg);
+      this.emit('frame', msg.replace(/\r/g, ''));
       pos = this.inputbuffer.indexOf(this.frameLimiter);
     }
   }
