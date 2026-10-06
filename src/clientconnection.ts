@@ -1,4 +1,4 @@
-import { EventEmitter } from 'node:events';
+import { EventEmitter } from 'events';
 
 export abstract class ClientConnection extends EventEmitter {
   abstract write(msg: string): void;

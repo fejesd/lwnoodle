@@ -1,13 +1,12 @@
 import { NoodleServerObject, NoodleServerProxyHandler } from './server';
-import { TcpServerConnection } from './tcpserverconnection';
 import { ServerConnection } from './serverconnection';
-import { EventEmitter } from 'node:events';
+import { LoopbackServerConnection } from './loopbackserverconnection';
+import { EventEmitter } from 'events';
 import Debug from 'debug';
 import * as _ from 'lodash';
 import { LwErrorCodes as LwErrorCodes, LwError as LwError, Noodle, NoodleServer, Property } from './noodle';
 import { escape, unescape } from './escaping';
 import { convertValue } from './common';
-import { WsServerConnection } from './wsserverconnection';
 
 const debug = Debug('LwServer');
 
@@ -15,7 +14,10 @@ export type LwServerOptions = {
   name?: string;
   port?: number;
   host?: string;
-  type?: 'tcp' | 'ws' | 'wss';
+  /** Transport type. 'loopback' is an in-memory transport, see LoopbackServerConnection. Ignored if connection is given. */
+  type?: 'tcp' | 'ws' | 'wss' | 'loopback';
+  /** Custom transport. If given, it is used instead of creating one based on the type */
+  connection?: ServerConnection;
   auth?: (username: string, password: string) => boolean;
   key?: string | Buffer;
   cert?: string | Buffer;
@@ -54,6 +56,42 @@ export class LwServer extends EventEmitter {
     return '%E' + ('00' + (errorcode as number).toString()).substr(-3) + ':' + LwError.getErrorCodeString(errorcode);
   }
 
+  /**
+   * Creates the transport for the given options. The TCP and WebSocket transports are loaded lazily, so the
+   * Node.js specific modules (net, ws, https) are not needed when only the loopback or a custom transport is used.
+   */
+  static createConnection(option: LwServerOptions): ServerConnection {
+    const port = option.port || 6107;
+    const host = option.host || 'localhost';
+    switch (option.type || 'tcp') {
+      case 'tcp': {
+        // tslint:disable-next-line:no-var-requires
+        const { TcpServerConnection } = require('./tcpserverconnection') as typeof import('./tcpserverconnection');
+        if (!TcpServerConnection) throw new Error('TcpServerConnection is not available in this environment');
+        return new TcpServerConnection(port, host);
+      }
+      case 'ws':
+      case 'wss': {
+        // tslint:disable-next-line:no-var-requires
+        const { WsServerConnection } = require('./wsserverconnection') as typeof import('./wsserverconnection');
+        if (!WsServerConnection) throw new Error('WsServerConnection is not available in this environment');
+        const secure = option.type === 'wss';
+        return new WsServerConnection({
+          port,
+          host,
+          secure,
+          key: secure ? option.key : undefined,
+          cert: secure ? option.cert : undefined,
+          auth: option.auth,
+        });
+      }
+      case 'loopback':
+        return new LoopbackServerConnection(option.name || 'default');
+      default:
+        throw new Error(`Unknown server type ${option.type}`);
+    }
+  }
+
   constructor(options: LwServerOptions | LwServerOptions[]) {
     super();
     this.sessions = {};
@@ -62,31 +100,7 @@ export class LwServer extends EventEmitter {
     this.server = [];
     this.options.forEach((option, idx) => {
       option.type = option.type || 'tcp';
-      if (option.type === 'tcp') {
-        this.server.push(new TcpServerConnection(option.port || 6107, option.host || 'localhost'));
-      } else if (option.type === 'ws') {
-        this.server.push(
-          new WsServerConnection({
-            port: option.port || 6107,
-            host: option.host || 'localhost',
-            secure: false,
-            auth: option.auth,
-          }),
-        );
-      } else if (option.type === 'wss') {
-        this.server.push(
-          new WsServerConnection({
-            port: option.port || 6107,
-            host: option.host || 'localhost',
-            secure: true,
-            key: option.key,
-            cert: option.cert,
-            auth: option.auth,
-          }),
-        );
-      } else {
-        throw new Error(`Unknown server type ${option.type}`);
-      }
+      this.server.push(option.connection || LwServer.createConnection(option));
       this.server[idx].on('listening', (s: ServerConnection) => {
         debug(`${s.name()} Server started`);
         this.emit('listening');

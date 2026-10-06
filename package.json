@@ -4,6 +4,12 @@
   "description": "A lightweight client and server implementation for Lightware 3 protocol",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "browser": {
+    "./lib/tcpserverconnection.js": false,
+    "./lib/tcpclientconnection.js": false,
+    "./lib/wsserverconnection.js": false,
+    "./lib/wsclientconnection.js": false
+  },
   "scripts": {
     "test": "jest --config jest.config.json --forceExit -i --coverage && jest-coverage-badges",
     "build": "tsc",
@@ -55,6 +61,7 @@
   ],
   "dependencies": {
     "debug": "^4.3.4",
+    "events": "^3.3.0",
     "lodash": "^4.17.21",
     "ws": "8.13.0"
   }

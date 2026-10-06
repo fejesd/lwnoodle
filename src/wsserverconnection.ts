@@ -1,5 +1,5 @@
 import { WebSocket, WebSocketServer } from 'ws';
-import { EventEmitter } from 'node:events';
+import { EventEmitter } from 'events';
 import Debug from 'debug';
 import { ServerConnection } from './serverconnection';
 import { Server as HttpsServer, createServer } from 'https';

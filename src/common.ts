@@ -52,3 +52,8 @@ export function convertValue(value: string): PropValue {
   }
   return retvalue;
 }
+
+/** Schedules a callback asynchronously as a microtask, preserving order (like a socket would deliver data). */
+export function microtask(fn: () => void): void {
+  Promise.resolve().then(fn);
+}

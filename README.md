@@ -309,6 +309,29 @@ server.BUILDINGS.MAIN.ROOM1.DISPLAY = server.DEVICES.DEV1;
 ```
 
 
+# In-memory (loopback) transport, browser usage
+
+Server and client can run in the same process without opening any socket. This is useful for tests, and it is the
+way to run a noodle server in a browser:
+
+```javascript
+const server = noodleServer({ type: 'loopback' });
+server.DEMO.NODE.Value = 'hello';
+
+const client = noodleClient({ type: 'loopback', server });
+await client.__connect__();
+console.log(await client.DEMO.NODE.Value); // hello
+```
+
+A loopback transport can be combined with the other ones, eg. `noodleServer([{ type: 'loopback' }, { port: 6107 }])`.
+
+Custom transports can be injected as well: pass an object implementing `ServerConnection` as `noodleServer({ connection })`,
+or a `ClientConnection` as `noodleClient({ connection })`.
+
+The TCP and WebSocket transports are loaded only when they are used, and the `browser` field of package.json excludes
+them from browser bundles, so lwnoodle can be bundled for the browser (eg. with esbuild, `--platform=browser`) and used
+with the loopback transport there.
+
 # Naming conventions
 
 The library relies on name conventions: nodes shall be UPPERCASE, Property names shall be CamelCase, methods are lowerCamelCase. 

@@ -1,4 +1,4 @@
-import { EventEmitter } from 'ws';
+import { EventEmitter } from 'events';
 
 export declare interface ServerConnection extends EventEmitter {
   on(event: 'listening' | 'serverclose', listener: (server: ServerConnection) => void): this;

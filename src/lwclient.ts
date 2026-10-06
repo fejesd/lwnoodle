@@ -1,5 +1,5 @@
 import { ClientConnection } from './clientconnection';
-import { EventEmitter } from 'node:events';
+import { EventEmitter } from 'events';
 import { escape, unescape } from './escaping';
 import { convertValue, PropValue } from './common';
 import Debug from 'debug';
@@ -7,6 +7,9 @@ import * as _ from 'lodash';
 import { ListenerCallback } from './noodle';
 
 const debug = Debug('LwClient');
+
+/** setImmediate is not available in browsers */
+const defer: (fn: () => void) => void = typeof setImmediate === 'function' ? (fn) => setImmediate(fn) : (fn) => setTimeout(fn, 0);
 
 /**
  * WaitListItem stores a signature and callback information. LwClient::waitList store a list of WaitListItems,
@@ -106,7 +109,7 @@ export class LwClient extends EventEmitter {
         subscribed.push(i.path);
       }
     });
-    setImmediate(() => this.emit('connect'));
+    defer(() => this.emit('connect'));
   }
 
   private cmdSend(cmd: string, callback?: (data: string[], info: any) => void, callbackInfo?: any, timeoutcb?: () => void): void {

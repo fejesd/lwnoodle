@@ -1,5 +1,5 @@
 import { Socket, Server } from 'net';
-import { EventEmitter } from 'node:events';
+import { EventEmitter } from 'events';
 import Debug from 'debug';
 import { ServerConnection } from './serverconnection';
 const debug = Debug('TcpServerConnection');
